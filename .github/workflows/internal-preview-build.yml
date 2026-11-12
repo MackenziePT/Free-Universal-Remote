@@ -12,7 +12,7 @@ jobs:
       URM_CI_HEADLESS: "1"
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Configure build Python
