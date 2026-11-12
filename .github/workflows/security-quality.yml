@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Python for analysis (not a user-install requirement)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Prepare disposable QA runtime
