@@ -1,0 +1,14 @@
+{
+  "allowed_roots": [
+    "%USERPROFILE%\\Desktop\\WORK"
+  ],
+  "enable_writes": false,
+  "enable_shell": false,
+  "enable_screen": false,
+  "enable_input": false,
+  "max_read_bytes": 65536,
+  "max_write_bytes": 1048576,
+  "max_command_seconds": 30,
+  "backup_root": "%LOCALAPPDATA%\\HarmonyRemoteMCP\\backups",
+  "grants_path": "%LOCALAPPDATA%\\HarmonyRemoteMCP\\grants.json"
+}

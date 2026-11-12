@@ -1,0 +1,16 @@
+# Full local acceptance without administrative privileges. No real project files modified.
+[CmdletBinding()]
+param()
+$ErrorActionPreference = 'Stop'
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$Python = Join-Path $Root '.venv\Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $Python)) { throw 'Install the agent first (scripts\Install.ps1).' }
+& $Python -m unittest discover -s (Join-Path $Root 'tests') -v
+if ($LASTEXITCODE -ne 0) { throw 'Regression suite failed.' }
+Write-Host '1/2: Checking official MCP stdio handshake.' -ForegroundColor Cyan
+& $Python (Join-Path $Root 'smoke_test.py')
+if ($LASTEXITCODE -ne 0) { throw 'MCP stdio handshake failed' }
+Write-Host '2/2: Checking PowerShell, NTFS and disposable file operations.' -ForegroundColor Cyan
+& $Python (Join-Path $Root 'windows_verify.py')
+if ($LASTEXITCODE -ne 0) { throw 'Windows acceptance test failed. Do not enable autostart.' }
+Write-Host 'LOCAL acceptance passed. Tunnel pairing and ChatGPT connection still require testing.' -ForegroundColor Green

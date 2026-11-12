@@ -1,0 +1,87 @@
+name: Windows independent quality gates
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-windows:
+    name: ${{ matrix.os }} / Python 3.14 / isolated runner
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-2022
+          - windows-2025
+          - windows-11-vs2026-arm
+    env:
+      URM_CI_HEADLESS: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Record platform (never collect hostnames/user credentials)
+        shell: pwsh
+        run: |
+          Write-Output ('OS version: ' + [Environment]::OSVersion.Version.ToString())
+          Write-Output ('Process arch: ' + [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)
+          Write-Output ('OS arch: ' + [Runtime.InteropServices.RuntimeInformation]::OSArchitecture)
+      - name: Install pinned Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Create disposable read-only policy
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'UniversalRemote-QA'
+          $approved = Join-Path $root 'approved'
+          New-Item -Path $approved -ItemType Directory -Force | Out-Null
+          $record = @{
+            allowed_roots = @($approved)
+            backup_root = (Join-Path $root 'backups')
+            grants_path = (Join-Path $root 'grants.json')
+            enable_writes = $false
+            enable_shell = $false
+            enable_screen = $false
+            enable_input = $false
+          }
+          $config = Join-Path $root 'config.json'
+          $record | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $config -Encoding utf8
+          ('HARMONY_MCP_CONFIG=' + $config) >> $env:GITHUB_ENV
+      - name: Full Python regression (fail on error)
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: MCP stdio handshake and 27 tools
+        shell: pwsh
+        run: |
+          python smoke_test.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: PowerShell parser for every installer/control script
+        shell: pwsh
+        run: |
+          $errorsFound = 0
+          Get-ChildItem scripts,tools -Filter '*.ps1' -Recurse | ForEach-Object {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if (@($errors).Count -gt 0) {
+              Write-Output ('PARSE_FAIL ' + $_.Name)
+              $errorsFound++
+            }
+          }
+          if ($errorsFound -gt 0) { exit 1 }
+
+# CI runs on independent GitHub-hosted machines ONLY once a repository is
+# connected and the workflow has actually executed. Do not claim a PASS yet.
+# These tests do not certify an Inno EXE, Authenticode identity, SmartScreen,
+# Windows 10, or ARM64 native binaries. No download/release publishing actions.

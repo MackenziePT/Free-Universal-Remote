@@ -1,0 +1,99 @@
+"""Unsigned Windows x64 standalone prototype only. Do NOT publish these binaries."""
+from __future__ import annotations
+import hashlib,json,os,shutil,subprocess,sys,time
+from pathlib import Path
+from audit_bundled_runtime import audit_all
+
+ROOT=Path(__file__).resolve().parents[1]
+QA=ROOT/"evidence"/"qa"
+DIST=QA/"public-portable-prototype"
+WORK=QA/"pyinstaller-work"
+SPEC=QA/"pyinstaller-spec"
+DIST.mkdir(parents=True,exist_ok=True)
+WORK.mkdir(parents=True,exist_ok=True)
+SPEC.mkdir(parents=True,exist_ok=True)
+
+targets=[
+    ("UniversalRemote-Preview","public_gui.py","windowed",
+     ["--hidden-import","pairing_management_ui",
+      "--hidden-import","device_pairing",
+      "--hidden-import","help_center",
+      "--hidden-import","guided_steps",
+      "--hidden-import","connection_doctor",
+      "--hidden-import","tunnel_setup_ui",
+      "--hidden-import","tunnel_manager",
+      "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
+    ("UniversalRemoteAgent-Preview","public_agent.py","console",
+     ["--collect-submodules","mcp.server","--collect-submodules","mcp.shared",
+      "--exclude-module","mcp.cli","--collect-all","anyio",
+      "--hidden-import","mss","--hidden-import","PIL",
+      "--hidden-import","pyautogui","--hidden-import","send2trash",
+      "--hidden-import","secure_gateway","--hidden-import","device_pairing",
+      "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
+    ("UniversalRemoteUpdater-Preview","public_update_cli.py","console",
+     ["--hidden-import","release_security",
+      "--hidden-import","release_trust_anchor",
+      "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
+    ("UniversalRemoteTunnel-Preview","public_tunnel.py","console",
+     ["--hidden-import","tunnel_manager"])
+]
+outputs=[]
+for name,script,window,extras in targets:
+    command=[
+        sys.executable,"-m","PyInstaller",
+        "--noconfirm","--clean","--noupx","--onedir",
+        "--"+window,"--name",name,
+        "--distpath",str(DIST),"--workpath",str(WORK),
+        "--specpath",str(SPEC),"--paths",str(ROOT),
+        *extras,str(ROOT/script)
+    ]
+    print("BUILD_START",name,flush=True)
+    start=time.monotonic()
+    log=QA/(name+".build.log")
+    flags=getattr(subprocess,"BELOW_NORMAL_PRIORITY_CLASS",0) if os.name=="nt" else 0
+    try:
+        with log.open("wb") as f:
+            proc=subprocess.run(command,cwd=str(ROOT),stdout=f,stderr=subprocess.STDOUT,
+                                timeout=900,check=False,creationflags=flags)
+    except subprocess.TimeoutExpired:
+        print("BUILD_TIMEOUT",name,flush=True)
+        raise
+    print("BUILD_EXIT",name,proc.returncode,"SECONDS",round(time.monotonic()-start,1),flush=True)
+    if proc.returncode:
+        lines=log.read_text(encoding="utf-8",errors="replace").splitlines()
+        print("LOG_LAST_LINES",name,"\n".join(lines[-14:]),flush=True)
+        raise SystemExit(proc.returncode)
+    binary=DIST/name/(name+".exe")
+    if not binary.is_file():raise RuntimeError("Missing expected standalone binary: "+str(binary))
+    with binary.open("rb") as handle:
+        sha=hashlib.file_digest(handle,"sha256").hexdigest()
+    outputs.append({"binary":str(binary.relative_to(DIST)),"sha256":sha,
+                    "bytes":binary.stat().st_size,
+                    "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
+# CPython 3.14's frozen ZIP loader needs zlib1.dll BEFORE Python initializes.
+# PyInstaller's dependency graph can omit it from a minimal updater, which
+# otherwise crashes with "Failed to import encodings module". Reuse the trusted,
+# locally bundled Python runtime DLL; never download a random binary.
+runtime_zlib = DIST/"UniversalRemoteAgent-Preview"/"_internal"/"zlib1.dll"
+if not runtime_zlib.is_file():
+    raise RuntimeError("Required Python runtime zlib1.dll missing from agent build")
+runtime_hash=hashlib.sha256(runtime_zlib.read_bytes()).digest()
+for item in outputs:
+    component=DIST/Path(item["binary"]).parts[0]
+    expected=component/"_internal"/"zlib1.dll"
+    if not expected.is_file():
+        shutil.copy2(runtime_zlib,expected)
+    if hashlib.sha256(expected.read_bytes()).digest()!=runtime_hash:
+        raise RuntimeError("Inconsistent zlib1.dll across components: "+component.name)
+    item["bundle_bytes"]=sum(f.stat().st_size for f in component.rglob("*") if f.is_file())
+gate_result=audit_all(DIST)
+print("RUNTIME_PREREQUISITES_AUDIT_PASS",json.dumps(gate_result),flush=True)
+(DIST/"UNSIGNED-PREVIEW-NOT-FOR-PUBLICATION.txt").write_text(
+    "UNSIGNED TEST ARTIFACT. NOT A CERTIFIED RELEASE.\n"
+    "Use only for isolated local acceptance, never as an official download.\n"
+    "No publisher identity, installer, MSIX, formal WACK or clean Windows E2E.\n",encoding="utf-8")
+(DIST/"BUILD-MANIFEST.json").write_text(
+    json.dumps({"kind":"unsigned-private-prototype","python":sys.version.split()[0],
+                "architectures":["Windows x64"],"components":outputs},
+               indent=2,ensure_ascii=False),encoding="utf-8")
+print("PORTABLE_BUILD_COMPLETED",json.dumps(outputs,ensure_ascii=False),flush=True)

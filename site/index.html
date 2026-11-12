@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Universal Remote — aplicação Windows autónoma para assistentes de IA, com instalação simples, permissões controladas e integração MCP local.">
+  <title>Universal Remote — O teu computador. A tua decisão.</title>
+  <style>
+    :root{color-scheme:dark;--bg:#080c18;--card:#11182a;--muted:#a6b4cc;--text:#f1f6ff;--line:#293651;--glow:#6cbeff;--mint:#8df8cf}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}body{margin:0;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse 800px 400px at 80% 0%,#233d6645,transparent),var(--bg);color:var(--text)}
+    a{color:inherit}a:focus-visible,summary:focus-visible{outline:3px solid var(--mint);outline-offset:4px;border-radius:5px}
+    .skip-link{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+    .skip-link:focus{left:16px;top:16px;width:auto;height:auto;z-index:100;padding:12px 18px;background:var(--mint);color:#061321;border-radius:10px}
+    .wrap{width:min(1140px,calc(100% - 48px));margin:auto}
+    header{position:sticky;top:0;z-index:30;background:#080c18e8;border-bottom:1px solid #2b3852;backdrop-filter:blur(20px)}
+    .nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+    .logo{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.05em;text-decoration:none}
+    .emblem{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;color:#051222;background:linear-gradient(140deg,var(--mint),var(--glow));box-shadow:0 0 20px #72baff33}
+    nav{display:flex;align-items:center;gap:27px}nav a{font-size:.94rem;color:var(--muted);text-decoration:none}nav a:hover{color:white}
+    .tag{display:inline-block;border:1px solid #4d6787;background:#15233c;border-radius:999px;color:#b9dfff;font-size:.8rem;letter-spacing:.03em;padding:7px 13px}
+    .hero{padding:96px 0 65px;display:grid;grid-template-columns:1.12fr .88fr;align-items:center;gap:50px}
+    h1{margin:20px 0;font-size:clamp(2.8rem,6vw,5rem);line-height:1.05;letter-spacing:-.055em;max-width:750px}
+    h1 span{background:linear-gradient(110deg,var(--mint),var(--glow));color:transparent;background-clip:text}
+    .lead{color:var(--muted);font-size:clamp(1.1rem,2vw,1.3rem);max-width:630px}
+    .buttons{display:flex;flex-wrap:wrap;gap:14px;margin:30px 0 12px}.button{border:1px solid #547091;border-radius:14px;text-decoration:none;padding:12px 21px;font-weight:700;background:#152440}.button.primary{color:#051221;background:linear-gradient(130deg,#9ff5d9,#76beff);border-color:transparent}
+    .note{color:var(--muted);font-size:.89rem}
+    .desktop{position:relative;border:1px solid #496281;border-radius:21px;background:linear-gradient(160deg,#1b304b,#0b1325);box-shadow:0 30px 90px #0009,0 0 60px #4eaaff1a;padding:16px;transform:perspective(1100px) rotateY(-8deg) rotateX(4deg)}
+    .topbar{display:flex;align-items:center;gap:7px;color:#b3c3da;font-size:.8rem;border-bottom:1px solid #2e4961;padding-bottom:14px}.dot{width:10px;height:10px;border-radius:100%;background:#6b8eaf}.dot:first-child{background:#ff9c8e}.dot:nth-child(2){background:#f6d087}.dot:nth-child(3){background:#89e4b2}
+    .window{padding:26px 16px 17px}.window h2{font-size:1.18rem;margin:0 0 6px}.window p{font-size:.85rem;color:var(--muted);margin:0 0 19px}
+    .status{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #30526a;border-radius:13px;background:#0d2431;padding:11px 14px;margin-bottom:12px;font-size:.85rem}.online{color:var(--mint);font-weight:700}.line{display:flex;justify-content:space-between;border-bottom:1px solid #2c4258;padding:10px 1px;font-size:.86rem;color:#c5d5e7}.line strong{color:var(--mint)}.line:last-child{border:0}
+    section{padding:74px 0}h2.section-title{font-size:clamp(2rem,4vw,3rem);letter-spacing:-.045em;margin:0 0 12px}p.section-sub{margin:0 0 30px;color:var(--muted);max-width:760px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:19px}.card{border:1px solid var(--line);border-radius:20px;background:linear-gradient(140deg,#15223a,#101728);padding:28px;min-height:230px}.card .emoji{font-size:1.9rem}.card h3{font-size:1.22rem;margin:13px 0 10px}.card p{color:var(--muted);margin:0}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:23px;counter-reset:step}.step{padding:26px;border-left:2px solid #83c2ff;counter-increment:step}.step:before{content:"0" counter(step);font-size:1.5rem;color:var(--mint);font-weight:800}.step h3{margin:12px 0}.step p{color:var(--muted)}
+    .secure{display:grid;grid-template-columns:1fr 1fr;gap:45px;align-items:center}.highlight{border:1px solid #335776;border-radius:22px;background:linear-gradient(140deg,#192f4c,#0b1d2b);padding:33px}.highlight p{color:#c6d7e9}
+    details{border-bottom:1px solid var(--line);padding:16px 0}summary{font-weight:700;cursor:pointer;list-style-position:outside}details p{color:var(--muted);margin-bottom:2px}
+    footer{padding:30px 0 50px;border-top:1px solid var(--line);color:var(--muted);font-size:.92rem}
+    @media(max-width:850px){.hero{grid-template-columns:1fr;padding-top:65px}.desktop{max-width:550px;margin:auto;transform:none}.cards,.steps{grid-template-columns:1fr}.secure{grid-template-columns:1fr}nav{gap:12px}}
+    @media(max-width:540px){.wrap{width:min(100% - 32px,1140px)}.nav{flex-wrap:wrap;padding:12px 0}nav{width:100%;flex-wrap:wrap;justify-content:center}nav a{font-size:.85rem}.hero{padding-top:38px}h1{font-size:2.8rem}.card{min-height:0}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Saltar para o conteúdo principal</a>
+  <header><div class="wrap nav">
+    <a class="logo" href="#inicio"><span class="emblem" aria-hidden="true">◈</span> UNIVERSAL REMOTE</a>
+    <nav aria-label="Navegação principal"><a href="#funcionalidades">Funcionalidades</a><a href="#como-funciona">Como funciona</a><a href="#seguranca">Segurança</a><a href="#perguntas">FAQ</a></nav>
+  </div></header>
+  <main id="conteudo">
+    <div class="wrap hero" id="inicio">
+      <div>
+        <span class="tag">Projeto em desenvolvimento · versão pública ainda indisponível</span>
+        <h1>O teu computador.<br>A tua IA.<br><span>O teu controlo.</span></h1>
+        <p class="lead">Uma aplicação Windows para ligar assistentes de IA ao teu computador, trabalhar com ficheiros e tarefas e manter o poder de autorização contigo.</p>
+        <div class="buttons"><a class="button primary" href="#funcionalidades">Conhecer a aplicação</a><a class="button" href="#perguntas">Como vai funcionar?</a></div>
+        <p class="note">Pré-visualização do produto. Ainda não existe download público certificado.</p>
+      </div>
+      <div class="desktop" role="img" aria-label="Pré-visualização conceptual do painel Universal Remote; não é uma captura da aplicação final">
+        <div class="topbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:10px">Universal Remote / Painel local</span></div>
+        <div class="window"><h2>Painel de controlo</h2><p>Transparente. Local. Sempre sob autorização.</p>
+          <div class="status"><span>Ligação ao dispositivo</span><span class="online">● Simulação visual</span></div>
+          <div class="line"><span>Ferramentas do sistema</span><strong>Disponíveis após configuração</strong></div>
+          <div class="line"><span>Escrita e terminal</span><strong>Autorização explícita</strong></div>
+          <div class="line"><span>Atividade e tarefas</span><strong>Registos locais</strong></div>
+        </div>
+      </div>
+    </div>
+    <section id="funcionalidades"><div class="wrap"><h2 class="section-title">Um motor. Diversas possibilidades.</h2>
+      <p class="section-sub">O Universal Remote usa funcionalidades próprias do sistema e MCP. Outros programas de controlo remoto não são dependências.</p>
+      <div class="cards">
+        <article class="card"><div class="emoji" aria-hidden="true">📂</div><h3>Ficheiros e tarefas</h3><p>Operações delimitadas, execução persistente e controlo das alterações com verificações de segurança.</p></article>
+        <article class="card"><div class="emoji" aria-hidden="true">🖥️</div><h3>Desktop e aplicações</h3><p>Inspeção de janelas e interação local, sempre dependentes das permissões apropriadas.</p></article>
+        <article class="card"><div class="emoji" aria-hidden="true">🔗</div><h3>Integrações abertas</h3><p>MCP para agentes compatíveis e opções de ligação privada, sem prender o produto a um fornecedor.</p></article>
+      </div>
+    </div></section>
+    <section id="como-funciona"><div class="wrap"><h2 class="section-title">Pensado para instalar, não para programar.</h2>
+      <p class="section-sub">Este é o fluxo de utilização pretendido para a versão pública; ainda está em desenvolvimento.</p>
+      <div class="steps"><div class="step"><h3>Instalar</h3><p>Um instalador assinado, com pré-requisitos integrados e sem comandos manuais.</p></div><div class="step"><h3>Escolher o acesso</h3><p>Selecionar pastas e capacidades, com explicações claras e revogação.</p></div><div class="step"><h3>Ligar a IA</h3><p>Emparelhar um cliente compatível e verificar o estado da ligação em tempo real.</p></div></div>
+    </div></section>
+    <section id="seguranca"><div class="wrap secure"><div>
+      <h2 class="section-title">Segurança desde o primeiro clique.</h2>
+      <p class="section-sub">Ler e modificar são coisas diferentes. O objetivo é permitir trabalho útil sem autorizações escondidas.</p>
+      <p>O plano de lançamento inclui assinatura de código, revisão independente de segurança, limites de permissões, privacidade por defeito e mecanismos de recuperação de falhas.</p>
+      </div><div class="highlight"><h3>Princípios do produto</h3><p>✓ Sem acesso privilegiado por defeito</p><p>✓ Permissões temporárias controladas localmente</p><p>✓ Ligações remotas autenticadas</p><p>✓ Histórico verificável e reversão quando possível</p><p class="note">Estas são metas e princípios de desenvolvimento, não uma alegação de certificação concluída.</p></div>
+    </div></section>
+    <section id="perguntas"><div class="wrap"><h2 class="section-title">Perguntas frequentes</h2>
+      <details><summary>Já posso descarregar o Universal Remote?</summary><p>A versão pública ainda não está disponível. O projeto encontra-se em testes e preparação da distribuição oficial.</p></details>
+      <details><summary>Preciso de instalar Python ou PowerShell manualmente?</summary><p>Não. A pré-visualização Windows x64 já inclui Python e bibliotecas no próprio programa. O PowerShell é opcional: quando autorizado, a aplicação consulta a versão estável mais recente publicada pela Microsoft, verifica a assinatura e o SHA-256 e só a descarrega se for necessária. Não altera o PowerShell global do Windows.</p></details>
+      <details><summary>É exclusivo do ChatGPT?</summary><p>Não. O agente usa MCP local para clientes compatíveis. A ligação remota ao ChatGPT ou a outros serviços pela Internet exige emparelhamento e transporte autenticado, ainda não incluídos na pré-visualização pública.</p></details>
+      <details><summary>Funciona em qualquer computador?</summary><p>O instalador experimental atual foi testado num Windows 11 x64, mas a compatibilidade pública com Windows 10, diferentes computadores e ARM64 ainda exige testes independentes. Não anunciamos compatibilidade universal sem a validar.</p></details>
+    </div></section>
+  </main>
+  <footer><div class="wrap">© Universal Remote — página de pré-visualização, não publicação oficial. Sem downloads, cookies ou scripts de terceiros nesta demonstração.</div></footer>
+</body>
+</html>

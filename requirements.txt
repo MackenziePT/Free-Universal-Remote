@@ -1,0 +1,7 @@
+mcp==1.30.0
+psutil==7.2.2
+mss==10.2.0
+Pillow==13.0.0
+pyautogui==0.9.54
+Send2Trash==1.8.3
+cryptography==50.0.2

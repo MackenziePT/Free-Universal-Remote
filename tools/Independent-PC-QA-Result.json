@@ -1,0 +1,16 @@
+{
+  "Product": "Universal Remote",
+  "TestType": "Uncertified independent PC acceptance",
+  "TimestampUtc": "2026-11-11T04:12:38.4104204Z",
+  "Platform": "Windows",
+  "OSBuild": "26300",
+  "Architecture": "64 bits",
+  "InstallerFound": true,
+  "InstallerSHA256": "3ee4c53db7de37d69f3c7e1ec82d47bd9ba47e97d504395a34662a8a39e2ff1a",
+  "ExpectedHashMatches": true,
+  "InstallerAuthenticode": "NotSigned",
+  "SignatureGate": "NOT_CERTIFIED",
+  "AgentHealth": "PASS",
+  "GUIHealth": "PASS",
+  "UpdaterHelp": "PASS"
+}

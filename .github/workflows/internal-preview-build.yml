@@ -1,0 +1,92 @@
+name: Unsigned internal Windows preview build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-windows-x64:
+    # Windows x64 only. This workflow NEVER publishes a GitHub release.
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      URM_CI_HEADLESS: "1"
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Configure build Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install pinned app + build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller==6.22.3
+      - name: Static critical lint
+        shell: pwsh
+        run: |
+          python -m pip install ruff
+          python -m ruff check --select E9,F63,F7,F82 .
+      - name: Prepare disposable no-privilege configuration
+        shell: pwsh
+        run: |
+          $home=Join-Path $env:RUNNER_TEMP 'urm-qa'
+          $work=Join-Path $home 'workspace'
+          New-Item -ItemType Directory -Force -Path $work | Out-Null
+          $record=@{
+            allowed_roots=@($work)
+            enable_writes=$false
+            enable_shell=$false
+            enable_screen=$false
+            enable_input=$false
+            grants_path=(Join-Path $home 'grants.json')
+            backup_root=(Join-Path $home 'backups')
+          }
+          $config=Join-Path $home 'config.json'
+          $record | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding utf8
+          "HARMONY_MCP_CONFIG=$config" >> $env:GITHUB_ENV
+      - name: Check public website accessibility basics and no fake downloads
+        run: python tools/audit_public_website.py
+      - name: Windows unit tests (headless UI tests excluded)
+        run: python -m unittest discover -s tests -q
+      - name: Build portable self-contained binaries
+        run: python tools/build_public_prototype.py
+      - name: Obtain verified Inno Setup 7 compiler
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $url='https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe'
+          $file=Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
+          Invoke-WebRequest -Uri $url -OutFile $file
+          $sig=Get-AuthenticodeSignature -FilePath $file
+          if($sig.Status -ne 'Valid' -or -not $sig.SignerCertificate -or
+             $sig.SignerCertificate.Subject -notmatch 'Pyrsys B.V.') {
+            throw 'Inno Setup compiler signature verification failed'
+          }
+          $p=Start-Process -FilePath $file -ArgumentList @(
+            '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER') -PassThru -Wait
+          if($p.ExitCode -ne 0){exit $p.ExitCode}
+      - name: Build internal preview setup
+        shell: pwsh
+        run: |
+          $compiler=Join-Path $env:LOCALAPPDATA 'Programs/Inno Setup 7/ISCC.exe'
+          if(-not (Test-Path -LiteralPath $compiler)){throw 'Inno Setup compiler missing'}
+          & $compiler (Join-Path $PWD 'packaging/UniversalRemote-Preview.iss')
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Assemble unsigned portable ZIP and manifest
+        run: python tools/assemble_preview_portable.py
+      - name: Upload internal preview artifacts (not a GitHub release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-remote-rc5-1-unsigned-x64-internal
+          path: |
+            evidence/qa/installer-build/*.exe
+            evidence/qa/portable-release/*.zip
+            evidence/qa/portable-release/RELEASE-EVIDENCE.json
+          retention-days: 7
+          if-no-files-found: error
+# Restrict workflow use to internal development until signing, licensing, WACK,
+# ARM64 and actual clean-Windows E2E gates are satisfied.

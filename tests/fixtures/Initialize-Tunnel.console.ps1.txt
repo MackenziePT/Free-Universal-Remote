@@ -1,0 +1,30 @@
+[CmdletBinding()]
+param([Parameter(Mandatory=$true)][ValidatePattern('^tunnel_[0-9a-f]{32}$')][string]$TunnelId)
+$ErrorActionPreference = 'Stop'
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$Client = Join-Path $Root 'bin\tunnel-client.exe'
+$Python = Join-Path $Root '.venv\Scripts\python.exe'
+if (-not (Test-Path $Client)) { throw "Copy tunnel-client.exe into $Root\bin first (official OpenAI release)" }
+if (-not (Test-Path $Python)) { throw 'Run scripts\Install.ps1 first' }
+$StateRoot = Join-Path $env:LOCALAPPDATA 'HarmonyRemoteMCP'
+New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
+$SecretPath = Join-Path $StateRoot 'tunnel-key.dpapi'
+$SecureKey = Read-Host 'OpenAI Platform runtime API key (never paste it in ChatGPT)' -AsSecureString
+# DPAPI binds this ciphertext to the currently logged-in Windows account.
+try {
+    $BSTR = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureKey)
+    try { $env:CONTROL_PLANE_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($BSTR) }
+    finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR) }
+    # Note: token exists in child process memory while the tunnel is running.
+    # Pass only plain path/ID arguments through PowerShell. Python constructs the
+    # shell-style MCP command and sends it as one native argv element.
+    & $Python (Join-Path $Root 'initialize_tunnel.py') --tunnel-id $TunnelId
+    if ($LASTEXITCODE -ne 0) { throw 'Tunnel initialization failed' }
+    & $Client doctor --profile harmony-remote --explain
+    if ($LASTEXITCODE -ne 0) { throw 'Tunnel doctor did not pass. Fix the diagnosis before starting.' }
+    # Persist a new key only after BOTH initialization and doctor succeed.
+    $SecureKey | ConvertFrom-SecureString | Set-Content -LiteralPath $SecretPath -Encoding UTF8
+    Write-Host 'Tunnel initialized. Use scripts\Start-Tunnel.ps1 to connect.' -ForegroundColor Green
+} finally {
+    Remove-Item Env:\CONTROL_PLANE_API_KEY -ErrorAction SilentlyContinue
+}
