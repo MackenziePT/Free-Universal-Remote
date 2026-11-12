@@ -16,7 +16,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure build Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
       - name: Install pinned app + build dependencies
