@@ -42,6 +42,4 @@ No Windows Defender, UAC or firewall bypass is required.
 
 ## License
 
-No new license has been granted by publishing this preview.
-A public-use/open-source license must be selected by the project owner before
-general distribution.
+Source code is licensed under MIT (see LICENSE). Third-party libraries and bundled tools retain their respective license terms.
