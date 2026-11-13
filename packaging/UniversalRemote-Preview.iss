@@ -56,6 +56,7 @@ Name: "desktopicon"; Description: "Criar atalho no Ambiente de Trabalho"; GroupD
 [Files]
 Source: "{#PackageRoot}\UniversalRemote-Preview\*"; DestDir: "{app}\GUI"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteAgent-Preview\*"; DestDir: "{app}\Agent"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PackageRoot}\UniversalRemoteBridge-Preview\*"; DestDir: "{app}\Bridge"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteUpdater-Preview\*"; DestDir: "{app}\Updater"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteTunnel-Preview\*"; DestDir: "{app}\Tunnel"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\bin\tunnel-client.exe"; DestDir: "{app}\bin"; Flags: ignoreversion

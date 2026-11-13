@@ -45,6 +45,7 @@ def audit_all(distribution:Path)->list[dict]:
     return [
         audit_one(distribution/"UniversalRemote-Preview","UniversalRemote-Preview.exe"),
         audit_one(distribution/"UniversalRemoteAgent-Preview","UniversalRemoteAgent-Preview.exe"),
+        audit_one(distribution/"UniversalRemoteBridge-Preview","UniversalRemoteBridge-Preview.exe"),
         audit_one(distribution/"UniversalRemoteUpdater-Preview","UniversalRemoteUpdater-Preview.exe"),
         audit_one(distribution/"UniversalRemoteTunnel-Preview","UniversalRemoteTunnel-Preview.exe")
     ]
