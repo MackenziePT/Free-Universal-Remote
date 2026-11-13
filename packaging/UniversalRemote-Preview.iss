@@ -59,6 +59,8 @@ Source: "{#PackageRoot}\UniversalRemoteAgent-Preview\*"; DestDir: "{app}\Agent";
 Source: "{#PackageRoot}\UniversalRemoteUpdater-Preview\*"; DestDir: "{app}\Updater"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteTunnel-Preview\*"; DestDir: "{app}\Tunnel"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\bin\tunnel-client.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\bin\cloudflared.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\bin\cloudflared-manifest.json"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\tunnel-client-origin.json"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\LICENSE"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\NOTICE"; DestDir: "{app}\bin"; Flags: ignoreversion

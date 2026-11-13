@@ -118,12 +118,13 @@ def provision_profile(tunnel_id: str, secret: str, state: Path,
             raise TunnelConfigError("Já existe uma configuração diferente. Abre a Ajuda.")
         record=json.loads(manifest.read_text(encoding="utf-8"))
         if (record.get("tunnel_id")!=tunnel_id or
-            record.get("profile_sha256")!=hashlib.sha256(profile.read_bytes()).hexdigest()):
+            record.get("profile_sha256")!=hashlib.sha256(profile.read_bytes()).hexdigest() or
+            b"--paired" not in profile.read_bytes()):
             raise TunnelConfigError("A ligação existente difere do pedido. Não foi alterada.")
         store_private_key(state,secret)
         return profile
     # Windows CreateProcess/Go CLI needs double-quoted paths, not POSIX shlex single quotes.
-    command=subprocess.list2cmdline([str(agent)])
+    command=subprocess.list2cmdline([str(agent),"--paired"])
     args=[str(client),"init","--sample","sample_mcp_stdio_local",
           "--profile",PROFILE_NAME,"--tunnel-id",tunnel_id,
           "--mcp-command",command]
@@ -139,7 +140,7 @@ def provision_profile(tunnel_id: str, secret: str, state: Path,
         if result.returncode or not profile.is_file():
             raise TunnelConfigError("O serviço não conseguiu criar a ligação privada")
         raw=profile.read_bytes()
-        if len(raw)>16384 or tunnel_id.encode() not in raw or b"CONTROL_PLANE_API_KEY" not in raw or agent.name.encode() not in raw:
+        if len(raw)>16384 or tunnel_id.encode() not in raw or b"CONTROL_PLANE_API_KEY" not in raw or agent.name.encode() not in raw or b"--paired" not in raw:
             raise TunnelConfigError("O perfil criado não passou na verificação de segurança")
         store_private_key(state,secret)
         _atomic_bytes(manifest,json.dumps({
@@ -224,7 +225,8 @@ def _validate_provisioned(state: Path,client: Path,agent: Path)->Path:
         raise TunnelConfigError("Ligação ainda não configurada")
     record=json.loads(receipt.read_text(encoding="utf-8"))
     if (record.get("format")!=1 or record.get("agent_name")!=agent.name or
-        record.get("profile_sha256")!=hashlib.sha256(profile.read_bytes()).hexdigest()):
+        record.get("profile_sha256")!=hashlib.sha256(profile.read_bytes()).hexdigest() or
+            b"--paired" not in profile.read_bytes()):
         raise TunnelConfigError("Configuração do túnel foi alterada; inicia novamente a associação")
     return profile
 

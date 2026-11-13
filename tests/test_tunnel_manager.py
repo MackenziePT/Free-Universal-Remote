@@ -86,10 +86,10 @@ class TunnelManagerTests(unittest.TestCase):
         profile=self.root/"universal-remote-preview.yaml"
         def init(args,**kwargs):
             value=args[args.index("--mcp-command")+1]
-            self.assertEqual(value,subprocess.list2cmdline([str(agent)]))
+            self.assertEqual(value,subprocess.list2cmdline([str(agent),"--paired"]))
             profile.write_text("tunnel_id: "+FAKE_ID+"\\n"
                 "api_key: env:CONTROL_PLANE_API_KEY\\n"
-                "command: "+str(agent)+"\\n",encoding="utf-8")
+                "command: "+str(agent)+" --paired"+"\\n",encoding="utf-8")
             return subprocess.CompletedProcess(args,0)
         with (patch.object(tm,"profile_path",return_value=profile),
               patch.object(tm,"verify_tunnel_client"),
@@ -110,7 +110,7 @@ class TunnelManagerTests(unittest.TestCase):
             self.assertIs(kwargs["stdout"],subprocess.DEVNULL)
             profile.write_text("tunnel_id: "+FAKE_ID+"\\n"+
                  "api_key: env:CONTROL_PLANE_API_KEY\\n"+
-                 "command: "+str(agent)+"\\n",encoding="utf-8")
+                 "command: "+str(agent)+" --paired"+"\\n",encoding="utf-8")
             return subprocess.CompletedProcess(args,0)
         with (patch.object(tm,"profile_path",return_value=profile),
               patch.object(tm,"verify_tunnel_client"),
@@ -121,6 +121,25 @@ class TunnelManagerTests(unittest.TestCase):
         self.assertNotIn(FAKE_KEY,(self.root/"state"/"tunnel-profile.json").read_text())
         self.assertNotIn(FAKE_KEY,profile.read_text())
         self.assertEqual(load_private_key(self.root/"state"),FAKE_KEY)
+
+    def test_existing_unpaired_profile_denied(self):
+        import hashlib
+        import tunnel_manager as tm
+        state=self.root/"state"
+        state.mkdir()
+        agent=self.root/"UniversalRemoteAgent-Preview.exe"
+        agent.write_bytes(b"test only")
+        client=self.root/"tunnel-client.exe"
+        client.write_bytes(b"test only")
+        profile=self.root/"legacy-unpaired.yaml"
+        profile.write_text("tunnel_id: "+FAKE_ID+"\napi_key: env:CONTROL_PLANE_API_KEY\ncommand: "+str(agent)+"\n")
+        manifest={"tunnel_id":FAKE_ID,
+                  "profile_sha256":hashlib.sha256(profile.read_bytes()).hexdigest()}
+        (state/"tunnel-profile.json").write_text(json.dumps(manifest))
+        with patch.object(tm,"profile_path",return_value=profile), patch.object(tm,"verify_tunnel_client"):
+            with self.assertRaises(TunnelConfigError):
+                tm.provision_profile(FAKE_ID,FAKE_KEY,state,agent,client)
+        self.assertFalse((state/"tunnel-key.dpapi").exists())
 
 if __name__=="__main__":
     unittest.main()

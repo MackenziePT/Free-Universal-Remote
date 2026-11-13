@@ -25,6 +25,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller==6.22.3
+      - name: Download and verify pinned tunnel executable and companion
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -File tools/Fetch-PinnedTunnel.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Static critical lint
         shell: pwsh
         run: |
@@ -47,7 +52,7 @@ jobs:
           }
           $config=Join-Path $home 'config.json'
           $record | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding utf8
-          "HARMONY_MCP_CONFIG=$config" >> $env:GITHUB_ENV
+          "URM_PREVIEW_CONFIG=$config" >> $env:GITHUB_ENV
       - name: Check public website accessibility basics and no fake downloads
         run: python tools/audit_public_website.py
       - name: Windows unit tests (headless UI tests excluded)

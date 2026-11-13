@@ -27,7 +27,7 @@ class StartupPreferenceTests(unittest.TestCase):
         open_key.assert_called_once()
         self.assertEqual(open_key.call_args.args[0],winreg.HKEY_CURRENT_USER)
         self.assertEqual(set_value.call_args.args[1],module.RUN_ENTRY)
-        self.assertIn(str(self.exe),set_value.call_args.args[-1])
+        self.assertIn(str(self.exe.resolve()),set_value.call_args.args[-1])
         delete.assert_not_called()
 
     def test_mismatched_existing_run_entry_never_overwritten(self):

@@ -22,7 +22,7 @@ class PublicMcpConfigTests(unittest.TestCase):
                  patch.object(sys,"executable",str(ui_dir/"UniversalRemote-Preview.exe")):
                 config=ui.local_mcp_config()
             definition=config["mcpServers"]["universal-remote"]
-            self.assertEqual(definition["command"],str(exe))
+            self.assertTrue(os.path.samefile(definition["command"],str(exe)))
             self.assertEqual(definition["args"],[])
             self.assertNotIn(".venv",str(config))
             self.assertNotIn("launch_server.py",str(config))
