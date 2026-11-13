@@ -15,6 +15,7 @@ import time
 import uuid
 
 import psutil
+from process_runner import clean_child_environment
 
 MAX_LOG_BYTES = 16 * 1024 * 1024
 MAX_TASKS_IN_HISTORY = 500
@@ -199,7 +200,7 @@ class TaskManager:
                 with log.open("xb") as handle:
                     flags = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) |
                              getattr(subprocess, "CREATE_NO_WINDOW", 0))
-                    environment = os.environ.copy()
+                    environment = clean_child_environment()
                     environment.setdefault("PYTHONIOENCODING", "utf-8")
                     proc = subprocess.Popen([executable, *arguments],
                                             cwd=cwd, stdin=subprocess.DEVNULL,
@@ -248,6 +249,19 @@ class TaskManager:
             rows = db.execute("SELECT job_id FROM tasks ORDER BY created_at DESC LIMIT ?",
                               (limit,)).fetchall()
         return [self.status(row["job_id"]) for row in rows]
+
+    def running_jobs(self) -> list[dict]:
+        """Inventory ALL registered running jobs, including older history entries.
+
+        Do not reuse list_jobs(limit=100): the most recent hundred jobs can all
+        have finished while an older long-running job remains active.
+        """
+        with self._db() as db:
+            rows = db.execute(
+                "SELECT job_id FROM tasks WHERE state='running' ORDER BY created_at ASC"
+            ).fetchall()
+        results = [self.status(row["job_id"]) for row in rows]
+        return [row for row in results if row["status"] == "running"]
 
     def output(self, job_id: str, offset=0, limit=16384) -> dict:
         if type(offset) is not int or not 0 <= offset < (1 << 63):

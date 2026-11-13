@@ -61,7 +61,7 @@ def validate_windows_path(path: str) -> None:
         if any(ord(c) < 32 or c in '<>:"|?*' for c in part):
             raise PolicyError("Invalid Windows path characters or alternate data stream")
         base = part.split(".", 1)[0].rstrip(" ").upper()
-        if (base in {"CON", "PRN", "AUX", "NUL"}
+        if (base in {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
                 or re.fullmatch(r"(?:COM|LPT)[1-9¹²³]", base)):
             raise PolicyError("Windows reserved device name")
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib,json,os,shutil,subprocess,sys,time,zipfile
 from pathlib import Path
 from audit_bundled_runtime import audit_all
+from rc51_windows_version import generate_version_file
 
 ROOT=Path(__file__).resolve().parents[1]
 QA=ROOT/"evidence"/"qa"
@@ -45,7 +46,7 @@ targets=[
       "--hidden-import","release_trust_anchor",
       "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
     ("UniversalRemoteTunnel-Preview","public_tunnel.py","console",
-     ["--hidden-import","tunnel_manager"])
+     [])
 ]
 outputs=[]
 for name,script,window,extras in targets:
@@ -62,6 +63,7 @@ for name,script,window,extras in targets:
         sys.executable,"-m","PyInstaller",
         "--noconfirm","--clean","--noupx","--onedir",
         "--"+window,"--name",name,
+        "--version-file",str(generate_version_file(name, QA/(name+".version.txt"))),
         "--distpath",str(DIST),"--workpath",str(WORK),
         "--specpath",str(SPEC),"--paths",str(ROOT),
         *extras,str(ROOT/script)
@@ -132,6 +134,29 @@ for item in outputs:
     item["bundle_bytes"]=sum(f.stat().st_size for f in component.rglob("*") if f.is_file())
 gate_result=audit_all(DIST)
 print("RUNTIME_PREREQUISITES_AUDIT_PASS",json.dumps(gate_result),flush=True)
+
+# Real startup probes for every frozen binary. File-presence and SHA audits
+# cannot prove that Python's ZIP importer is actually bootable.
+for component, arguments, expected in (
+        ("UniversalRemote-Preview", ["--self-test"], None),
+        ("UniversalRemoteAgent-Preview", ["--health-probe"], "UNIVERSAL_REMOTE_AGENT_HEALTH_OK"),
+        ("UniversalRemoteBridge-Preview", ["--health-probe"], "UNIVERSAL_REMOTE_TUNNEL_BRIDGE_HEALTH_OK"),
+        ("UniversalRemoteUpdater-Preview", ["trust-profile"], '"channel": "PRIVATE_QA"'),
+        ("UniversalRemoteTunnel-Preview", ["--self-test"], "UNIVERSAL_REMOTE_TUNNEL_SELFTEST_OK")):
+    executable = DIST / component / (component + ".exe")
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith("_PYI_")
+                   and key.upper() not in {"PYINSTALLER_RESET_ENVIRONMENT",
+                                           "PYINSTALLER_SUPPRESS_SPLASH_SCREEN"}}
+    environment.pop("HARMONY_MCP_CONFIG", None)
+    environment.pop("CONTROL_PLANE_API_KEY", None)
+    result = subprocess.run([str(executable), *arguments],
+                            cwd=executable.parent, env=environment,
+                            capture_output=True, text=True, timeout=75)
+    if result.returncode != 0 or (expected and expected not in result.stdout):
+        print("FROZEN_STARTUP_PROBE_FAILED", component, "exit", result.returncode, flush=True)
+        raise SystemExit(7)
+    print("FROZEN_STARTUP_PROBE_PASS", component, flush=True)
 (DIST/"UNSIGNED-PREVIEW-NOT-FOR-PUBLICATION.txt").write_text(
     "UNSIGNED TEST ARTIFACT. NOT A CERTIFIED RELEASE.\n"
     "Use only for isolated local acceptance, never as an official download.\n"

@@ -72,7 +72,7 @@ def _safe_name(name: str) -> str:
     if any(p in (".", "..", "") for p in parts) or len(parts) > 16 or len(name) > 240:
         raise ReleaseError("Unsafe archive path")
     if any(":" in p or p[-1] in ". " or
-           re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?", p)
+           re.fullmatch(r"(?i)(CON|CONIN\$|CONOUT\$|PRN|AUX|NUL|(?:COM|LPT)[1-9\u00b9\u00b2\u00b3])(?:\..*)?", p)
            for p in parts):
         raise ReleaseError("Windows-reserved archive path")
     if any(ord(char) < 32 or char in '<>"|?*' for char in name):
