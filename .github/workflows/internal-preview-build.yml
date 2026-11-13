@@ -40,8 +40,8 @@ jobs:
       - name: Prepare disposable no-privilege configuration
         shell: pwsh
         run: |
-          $home=Join-Path $env:RUNNER_TEMP 'urm-qa'
-          $work=Join-Path $home 'workspace'
+          $qaHome=Join-Path $env:RUNNER_TEMP 'urm-qa'
+          $work=Join-Path $qaHome 'workspace'
           New-Item -ItemType Directory -Force -Path $work | Out-Null
           $record=@{
             allowed_roots=@($work)
@@ -49,10 +49,10 @@ jobs:
             enable_shell=$false
             enable_screen=$false
             enable_input=$false
-            grants_path=(Join-Path $home 'grants.json')
-            backup_root=(Join-Path $home 'backups')
+            grants_path=(Join-Path $qaHome 'grants.json')
+            backup_root=(Join-Path $qaHome 'backups')
           }
-          $config=Join-Path $home 'config.json'
+          $config=Join-Path $qaHome 'config.json'
           $record | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding utf8
           "URM_PREVIEW_CONFIG=$config" >> $env:GITHUB_ENV
       - name: Check public website accessibility basics and no fake downloads
