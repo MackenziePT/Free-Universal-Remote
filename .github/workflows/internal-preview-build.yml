@@ -88,8 +88,10 @@ jobs:
           if(-not (Test-Path -LiteralPath $compiler)){throw 'Inno Setup compiler missing'}
           & $compiler (Join-Path $PWD 'packaging/UniversalRemote-Preview.iss')
           if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
-      - name: Assemble unsigned portable ZIP and manifest
-        run: python tools/assemble_preview_portable.py
+      - name: Assemble complete five-component private portable ZIP
+        run: python tools/build_verified_private_zip.py
+      - name: Independently verify extracted portable ZIP and MCP
+        run: python tools/verify_private_zip.py
       - name: Upload QA build logs even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,8 +109,8 @@ jobs:
           name: universal-remote-rc5-1-unsigned-x64-internal
           path: |
             evidence/qa/installer-build/*.exe
-            evidence/qa/portable-release/*.zip
-            evidence/qa/portable-release/RELEASE-EVIDENCE.json
+            evidence/qa/UniversalRemote-RC5.1-20261113-HARDENED-PRIVATE-UNSIGNED.zip
+            evidence/qa/standalone-acceptance.json
           retention-days: 7
           if-no-files-found: error
 # Restrict workflow use to internal development until signing, licensing, WACK,
