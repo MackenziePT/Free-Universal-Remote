@@ -57,6 +57,15 @@ jobs:
           "URM_PREVIEW_CONFIG=$config" >> $env:GITHUB_ENV
       - name: Check public website accessibility basics and no fake downloads
         run: python tools/audit_public_website.py
+      - name: Use canonical runner TEMP and TMP for path-security tests
+        shell: pwsh
+        run: |
+          $tempRoot = Join-Path $env:RUNNER_TEMP 'UniversalRemote-CanonicalTemp'
+          New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
+          ('TEMP=' + $tempRoot) >> $env:GITHUB_ENV
+          ('TMP=' + $tempRoot) >> $env:GITHUB_ENV
+          ('TMPDIR=' + $tempRoot) >> $env:GITHUB_ENV
+          if (-not (Test-Path -LiteralPath $tempRoot)) { throw 'Missing canonical temp directory' }
       - name: Windows unit tests (headless UI tests excluded)
         run: python -m unittest discover -s tests -q
       - name: Build portable self-contained binaries
