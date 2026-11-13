@@ -97,6 +97,11 @@ jobs:
           if(-not (Test-Path -LiteralPath $compiler)){throw 'Inno Setup compiler missing'}
           & $compiler (Join-Path $PWD 'packaging/UniversalRemote-Preview.iss')
           if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+      - name: Refuse in-use upgrades before modifying installed files
+        shell: pwsh
+        run: |
+          python tools/test_installer_inuse_preflight.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Assemble complete five-component private portable ZIP
         run: python tools/build_verified_private_zip.py
       - name: Independently verify extracted portable ZIP and MCP
