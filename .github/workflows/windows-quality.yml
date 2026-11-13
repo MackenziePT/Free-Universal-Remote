@@ -39,7 +39,7 @@ jobs:
       - name: Normalize CI temporary directory without weakening production policy
         shell: pwsh
         run: |
-          $root=Join-Path $env:GITHUB_WORKSPACE '_ci_temp'
+          $root=Join-Path $env:RUNNER_TEMP 'UniversalRemote-CanonicalTemp'
           New-Item -ItemType Directory -Force -Path $root | Out-Null
           ('TEMP='+$root) >> $env:GITHUB_ENV
           ('TMP='+$root) >> $env:GITHUB_ENV
