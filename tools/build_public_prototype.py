@@ -1,6 +1,6 @@
 """Unsigned Windows x64 standalone prototype only. Do NOT publish these binaries."""
 from __future__ import annotations
-import hashlib,json,os,shutil,subprocess,sys,time
+import hashlib,json,os,shutil,subprocess,sys,time,zipfile
 from pathlib import Path
 from audit_bundled_runtime import audit_all
 
@@ -29,6 +29,7 @@ targets=[
       "--hidden-import","mss","--hidden-import","PIL",
       "--hidden-import","pyautogui","--hidden-import","send2trash",
       "--hidden-import","secure_gateway","--hidden-import","device_pairing",
+      "--hidden-import","private_tunnel_bridge",
       "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
     ("UniversalRemoteBridge-Preview","private_tunnel_bridge.py","console",
      ["--collect-submodules","mcp.server","--collect-submodules","mcp.shared",
@@ -48,6 +49,15 @@ targets=[
 ]
 outputs=[]
 for name,script,window,extras in targets:
+    if "--finalize-existing" in sys.argv[1:]:
+        binary=DIST/name/(name+".exe")
+        if not binary.is_file():
+            raise RuntimeError("Cannot finalize missing previously built binary: "+str(binary))
+        outputs.append({"binary":str(binary.relative_to(DIST)),
+                        "sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),
+                        "bytes":binary.stat().st_size,
+                        "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
+        continue
     command=[
         sys.executable,"-m","PyInstaller",
         "--noconfirm","--clean","--noupx","--onedir",
@@ -79,6 +89,31 @@ for name,script,window,extras in targets:
     outputs.append({"binary":str(binary.relative_to(DIST)),"sha256":sha,
                     "bytes":binary.stat().st_size,
                     "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
+# CPython 3.14 on Windows has a frozen ZIP startup consistency regression:
+# two independently generated, semantically identical base_library.zip archives
+# are not always equally bootable. Use the ALREADY-VERIFIED main agent archive as
+# the canonical CPython stdlib ZIP for all five bundled executables.
+# Verify every member byte-for-byte before sharing it. Fail closed if variants
+# contain different standard-library code; do not mask a packaging mismatch.
+canonical=DIST/"UniversalRemoteAgent-Preview"/"_internal"/"base_library.zip"
+with zipfile.ZipFile(canonical) as package:
+    canonical_names=package.namelist()
+    canonical_hashes={name:hashlib.sha256(package.read(name)).digest()
+                      for name in canonical_names}
+for item in outputs:
+    folder=DIST/Path(item["binary"]).parts[0]
+    target=folder/"_internal"/"base_library.zip"
+    with zipfile.ZipFile(target) as archive:
+        if (len(archive.namelist())!=len(canonical_names) or set(archive.namelist())!=set(canonical_names)) or any(
+                hashlib.sha256(archive.read(name)).digest()!=expected
+                for name,expected in canonical_hashes.items()):
+            raise RuntimeError("Mismatched embedded Python standard library: "+folder.name)
+    if target!=canonical:
+        shutil.copy2(canonical,target)
+    if hashlib.sha256(target.read_bytes()).digest()!=hashlib.sha256(canonical.read_bytes()).digest():
+        raise RuntimeError("Failed to normalize frozen Python ZIP: "+folder.name)
+print("CANONICAL_PYTHON314_ZIP_VERIFIED_AND_SHARED",flush=True)
+
 # CPython 3.14's frozen ZIP loader needs zlib1.dll BEFORE Python initializes.
 # PyInstaller's dependency graph can omit it from a minimal updater, which
 # otherwise crashes with "Failed to import encodings module". Reuse the trusted,

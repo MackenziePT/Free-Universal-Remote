@@ -20,23 +20,23 @@ class PublicDistributionTests(unittest.TestCase):
     @unittest.skipUnless(os.name=="nt","Requires Tk desktop")
     @unittest.skipIf(os.environ.get("URM_CI_HEADLESS")=="1",
                      "Real Tk desktop required; test separately on an interactive Windows runner")
-    def test_five_step_first_run_consent_is_default_deny(self):
+    def test_three_step_onboarding_prepares_capabilities_without_grant(self):
         from public_gui import Onboarding
         wizard=Onboarding()
         try:
             wizard.withdraw()
             self.assertEqual(wizard.step,0)
-            self.assertTrue(wizard.prepare_powershell.get(),
-                            'Latest stable PowerShell check should be selected by default')
-            wizard.prepare_powershell.set(False)
             self.assertFalse(wizard.prepare_powershell.get(),
-                             'A user must be able to opt out of optional downloads')
-            wizard._next();self.assertEqual(wizard.step,1)
+                             "Optional PowerShell provisioning is opt-in")
+            wizard.prepare_powershell.set(True)
+            wizard.prepare_powershell.set(False)
             wizard.selection.set(str(self.selected))
-            wizard._next();self.assertEqual(wizard.step,2)
-            self.assertFalse(any(value.get() for value in wizard.options.values()))
-            wizard._next();self.assertEqual(wizard.step,3)
-            wizard._next();self.assertEqual(wizard.step,4)
+            wizard._next()
+            self.assertEqual(wizard.step,1)
+            self.assertTrue(all(value.get() for value in wizard.options.values()),
+                            "Capabilities are prepared, not granted")
+            wizard._next()
+            self.assertEqual(wizard.step,2)
             wizard._next()
             self.assertTrue(wizard.completed)
             self.assertTrue(config_path().is_file())
