@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   independent-windows:
-    name: ${{ matrix.os }} / Python 3.14 / isolated runner
+    name: ${{ matrix.os }} / Python 3.13 / isolated runner
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     strategy:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
           cache: pip
       - name: Record platform (never collect hostnames/user credentials)
         shell: pwsh

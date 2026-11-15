@@ -84,7 +84,7 @@ class PublicDistributionTests(unittest.TestCase):
                 target.write_bytes(competitor)
                 raise FileExistsError("Concurrent configuration was created")
             raise AssertionError("Unexpected hardlink operation")
-        with patch("public_paths.os.link",side_effect=concurrent_create):
+        with patch("public_paths.os.rename" if os.name=="nt" else "public_paths.os.link",side_effect=concurrent_create):
             with self.assertRaises(FileExistsError):
                 write_initial_config(self.selected)
         self.assertEqual(target.read_bytes(),competitor)

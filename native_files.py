@@ -13,6 +13,7 @@ import stat
 import tempfile
 
 from remote_core import Config, PolicyError, _approved_read, safe_path
+from exclusive_file_ops import publish_no_replace, move_no_replace
 
 MAX_COPY_BYTES = 128 * 1024 * 1024
 
@@ -74,7 +75,7 @@ def copy_file(cfg: Config, source: str, destination: str) -> dict:
             raise PolicyError("Source changed during copy")
         # Atomic exclusive publish: os.link refuses to overwrite an existing target,
         # including one appearing between pre-validation and publication.
-        os.link(temp, dst)
+        publish_no_replace(temp, dst)
     finally:
         temp.unlink(missing_ok=True)
     return {"copied": str(dst), "bytes": count, "sha256": digest.hexdigest()}
@@ -89,12 +90,7 @@ def move_file(cfg: Config, source: str, destination: str) -> dict:
         raise PolicyError("Cross-volume moves are not atomic; move refused")
     # Exclusive destination link before unlinking source; even a race cannot
     # silently overwrite a file created by another program.
-    os.link(src, dst)
-    try:
-        src.unlink()
-    except Exception:
-        dst.unlink(missing_ok=True)
-        raise
+    move_no_replace(src, dst)
     return {"moved": str(dst), "from": str(src)}
 
 

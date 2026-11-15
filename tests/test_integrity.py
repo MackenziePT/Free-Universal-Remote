@@ -46,17 +46,24 @@ class FileIntegrityTests(unittest.TestCase):
         self.assertEqual(path.read_text(), 'new')
         self.assertEqual(Path(saved['backup']).read_text(), 'old')
 
+    @unittest.skipUnless(os.name == 'nt', 'Windows NTFS permission regression')
+    def test_new_file_does_not_need_ntfs_hardlink_permission(self):
+        target = self.root / 'no-hardlink-needed.txt'
+        with patch('remote_core.os.link', side_effect=PermissionError(5, 'Hardlink blocked')):
+            write_text(self.cfg, str(target), 'success')
+        self.assertEqual(target.read_text(), 'success')
+
     def test_new_file_creation_rejects_stale_expectation(self):
         with self.assertRaises(PolicyError):
             write_text(self.cfg, str(self.root/'new.txt'), 'hello', expected_sha256='0'*64)
 
     def test_new_file_race_does_not_overwrite_concurrent_writer(self):
         target = self.root / 'created-by-other.txt'
-        real_link = os.link
+        real_link = os.rename if os.name == 'nt' else os.link
         def simultaneous_write(source, destination, *args, **kwargs):
             Path(destination).write_text('concurrent owner', encoding='utf-8')
             return real_link(source, destination, *args, **kwargs)
-        with patch('remote_core.os.link', side_effect=simultaneous_write):
+        with patch('remote_core.os.rename' if os.name == 'nt' else 'remote_core.os.link', side_effect=simultaneous_write):
             with self.assertRaises(PolicyError):
                 write_text(self.cfg, str(target), 'ours')
         self.assertEqual(target.read_text(), 'concurrent owner')

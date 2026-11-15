@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from operation_journal import operation_status, execute_once
+from exclusive_file_ops import publish_no_replace
 
 BASE = Path(__file__).resolve().parent
 
@@ -438,12 +439,12 @@ def write_text(cfg: Config, path: str, content: str,
             # Atomic create-if-absent. os.replace would overwrite a file that
             # appears after the earlier existence check.
             try:
-                os.link(tmp, p)
+                publish_no_replace(tmp, p)
             except FileExistsError as exc:
                 raise PolicyError("New target appeared during write; cancelled") from exc
             except (OSError, NotImplementedError) as exc:
                 raise PolicyError("Filesystem does not support safe atomic create") from exc
-            os.unlink(tmp)
+            # The staging file is cleaned up below if still present.
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)

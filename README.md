@@ -30,7 +30,7 @@ private telemetry, generated executables or certificate keys.
 
 ## Building / testing
 
-Python 3.14 (development only), pinned project dependencies and Windows.
+Windows x64, **Python 3.13** in an isolated environment (verified with 3.13.14), pinned project dependencies and PyInstaller 6.22.3. Do not build frozen binaries with Python 3.14: the RC5.1 Agent/Bridge/Updater/Tunnel were observed to fail at embedded `encodings` startup. Independent Windows tests and signed-public release gates remain required.
 See packaging/BUILD_AND_RELEASE.md and docs/PUBLIC_RELEASE_GATES.md.
 Local tests: python -m unittest discover -s tests -q.
 

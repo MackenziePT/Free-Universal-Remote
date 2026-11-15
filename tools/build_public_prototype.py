@@ -5,6 +5,11 @@ from pathlib import Path
 from audit_bundled_runtime import audit_all
 from rc51_windows_version import generate_version_file
 
+# Do not silently reintroduce the observed CPython 3.14 frozen-boot failure.
+# The signed-public release still needs a separate independent certification.
+if os.name != 'nt' or sys.version_info[:2] != (3, 13) or sys.maxsize <= 2**32:
+    raise SystemExit('UNSUPPORTED_BUILD_RUNTIME: use Windows x64 with tested Python 3.13')
+
 ROOT=Path(__file__).resolve().parents[1]
 QA=ROOT/"evidence"/"qa"
 DIST=QA/"public-portable-prototype"
@@ -91,7 +96,7 @@ for name,script,window,extras in targets:
     outputs.append({"binary":str(binary.relative_to(DIST)),"sha256":sha,
                     "bytes":binary.stat().st_size,
                     "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
-# CPython 3.14 on Windows has a frozen ZIP startup consistency regression:
+# Embedded CPython has shown inconsistent frozen standard-library ZIP startup:
 # two independently generated, semantically identical base_library.zip archives
 # are not always equally bootable. Use the ALREADY-VERIFIED main agent archive as
 # the canonical CPython stdlib ZIP for all five bundled executables.
@@ -114,9 +119,9 @@ for item in outputs:
         shutil.copy2(canonical,target)
     if hashlib.sha256(target.read_bytes()).digest()!=hashlib.sha256(canonical.read_bytes()).digest():
         raise RuntimeError("Failed to normalize frozen Python ZIP: "+folder.name)
-print("CANONICAL_PYTHON314_ZIP_VERIFIED_AND_SHARED",flush=True)
+print("CANONICAL_EMBEDDED_PYTHON_ZIP_VERIFIED_AND_SHARED",flush=True)
 
-# CPython 3.14's frozen ZIP loader needs zlib1.dll BEFORE Python initializes.
+# Verify that zlib1.dll is deployed alongside the embedded Python runtime.
 # PyInstaller's dependency graph can omit it from a minimal updater, which
 # otherwise crashes with "Failed to import encodings module". Reuse the trusted,
 # locally bundled Python runtime DLL; never download a random binary.
