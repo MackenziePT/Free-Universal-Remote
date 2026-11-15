@@ -1,9 +1,9 @@
 name: Supply-chain and security checks
 on:
   pull_request:
-    branches: ["main", "develop"]
+    branches: ["main", "develop", "fix/rc51-windows-verified-20261115"]
   push:
-    branches: ["main", "develop"]
+    branches: ["main", "develop", "fix/rc51-windows-verified-20261115"]
 permissions:
   contents: read
 

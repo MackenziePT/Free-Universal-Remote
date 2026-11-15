@@ -1,9 +1,9 @@
 name: Windows independent quality gates
 on:
   push:
-    branches: ["main", "develop", "fix/rc51-functional-build-20261113"]
+    branches: ["main", "develop", "fix/rc51-functional-build-20261113", "fix/rc51-windows-verified-20261115"]
   pull_request:
-    branches: ["main", "develop", "fix/rc51-functional-build-20261113"]
+    branches: ["main", "develop", "fix/rc51-functional-build-20261113", "fix/rc51-windows-verified-20261115"]
   workflow_dispatch:
 
 permissions:
