@@ -108,7 +108,7 @@ jobs:
         run: python tools/verify_private_zip.py
       - name: Upload QA build logs even on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: universal-remote-rc51-qa-logs
           path: |
@@ -118,7 +118,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Upload internal preview artifacts (not a GitHub release)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: universal-remote-rc5-1-unsigned-x64-internal
           path: |
