@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $paths = @(
     $Installer,
     (Join-Path $PortableRoot 'UniversalRemoteAgent-Preview\UniversalRemoteAgent-Preview.exe'),
+    (Join-Path $PortableRoot 'UniversalRemoteBridge-Preview\UniversalRemoteBridge-Preview.exe'),
     (Join-Path $PortableRoot 'UniversalRemote-Preview\UniversalRemote-Preview.exe'),
     (Join-Path $PortableRoot 'UniversalRemoteUpdater-Preview\UniversalRemoteUpdater-Preview.exe'),
     (Join-Path $PortableRoot 'UniversalRemoteTunnel-Preview\UniversalRemoteTunnel-Preview.exe')
