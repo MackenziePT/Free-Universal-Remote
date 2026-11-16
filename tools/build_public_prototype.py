@@ -1,8 +1,14 @@
 """Unsigned Windows x64 standalone prototype only. Do NOT publish these binaries."""
 from __future__ import annotations
-import hashlib,json,os,shutil,subprocess,sys,time
+import hashlib,json,os,shutil,subprocess,sys,time,zipfile
 from pathlib import Path
 from audit_bundled_runtime import audit_all
+from rc51_windows_version import generate_version_file
+
+# Do not silently reintroduce the observed CPython 3.14 frozen-boot failure.
+# The signed-public release still needs a separate independent certification.
+if os.name != 'nt' or sys.version_info[:2] != (3, 13) or sys.maxsize <= 2**32:
+    raise SystemExit('UNSUPPORTED_BUILD_RUNTIME: use Windows x64 with tested Python 3.13')
 
 ROOT=Path(__file__).resolve().parents[1]
 QA=ROOT/"evidence"/"qa"
@@ -29,20 +35,40 @@ targets=[
       "--hidden-import","mss","--hidden-import","PIL",
       "--hidden-import","pyautogui","--hidden-import","send2trash",
       "--hidden-import","secure_gateway","--hidden-import","device_pairing",
+      "--hidden-import","private_tunnel_bridge",
+      "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
+    ("UniversalRemoteBridge-Preview","private_tunnel_bridge.py","console",
+     ["--collect-submodules","mcp.server","--collect-submodules","mcp.shared",
+      "--exclude-module","mcp.cli","--collect-all","anyio",
+      "--hidden-import","server","--hidden-import","secure_gateway",
+      "--hidden-import","device_pairing","--hidden-import","tunnel_manager",
+      "--hidden-import","mss","--hidden-import","PIL",
+      "--hidden-import","pyautogui","--hidden-import","send2trash",
+      "--hidden-import","psutil",
       "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
     ("UniversalRemoteUpdater-Preview","public_update_cli.py","console",
      ["--hidden-import","release_security",
       "--hidden-import","release_trust_anchor",
       "--hidden-import","cryptography.hazmat.primitives.asymmetric.ed25519"]),
     ("UniversalRemoteTunnel-Preview","public_tunnel.py","console",
-     ["--hidden-import","tunnel_manager"])
+     [])
 ]
 outputs=[]
 for name,script,window,extras in targets:
+    if "--finalize-existing" in sys.argv[1:]:
+        binary=DIST/name/(name+".exe")
+        if not binary.is_file():
+            raise RuntimeError("Cannot finalize missing previously built binary: "+str(binary))
+        outputs.append({"binary":str(binary.relative_to(DIST)),
+                        "sha256":hashlib.sha256(binary.read_bytes()).hexdigest(),
+                        "bytes":binary.stat().st_size,
+                        "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
+        continue
     command=[
         sys.executable,"-m","PyInstaller",
         "--noconfirm","--clean","--noupx","--onedir",
         "--"+window,"--name",name,
+        "--version-file",str(generate_version_file(name, QA/(name+".version.txt"))),
         "--distpath",str(DIST),"--workpath",str(WORK),
         "--specpath",str(SPEC),"--paths",str(ROOT),
         *extras,str(ROOT/script)
@@ -70,7 +96,32 @@ for name,script,window,extras in targets:
     outputs.append({"binary":str(binary.relative_to(DIST)),"sha256":sha,
                     "bytes":binary.stat().st_size,
                     "bundle_bytes":sum(f.stat().st_size for f in (DIST/name).rglob("*") if f.is_file())})
-# CPython 3.14's frozen ZIP loader needs zlib1.dll BEFORE Python initializes.
+# Embedded CPython has shown inconsistent frozen standard-library ZIP startup:
+# two independently generated, semantically identical base_library.zip archives
+# are not always equally bootable. Use the ALREADY-VERIFIED main agent archive as
+# the canonical CPython stdlib ZIP for all five bundled executables.
+# Verify every member byte-for-byte before sharing it. Fail closed if variants
+# contain different standard-library code; do not mask a packaging mismatch.
+canonical=DIST/"UniversalRemoteAgent-Preview"/"_internal"/"base_library.zip"
+with zipfile.ZipFile(canonical) as package:
+    canonical_names=package.namelist()
+    canonical_hashes={name:hashlib.sha256(package.read(name)).digest()
+                      for name in canonical_names}
+for item in outputs:
+    folder=DIST/Path(item["binary"]).parts[0]
+    target=folder/"_internal"/"base_library.zip"
+    with zipfile.ZipFile(target) as archive:
+        if (len(archive.namelist())!=len(canonical_names) or set(archive.namelist())!=set(canonical_names)) or any(
+                hashlib.sha256(archive.read(name)).digest()!=expected
+                for name,expected in canonical_hashes.items()):
+            raise RuntimeError("Mismatched embedded Python standard library: "+folder.name)
+    if target!=canonical:
+        shutil.copy2(canonical,target)
+    if hashlib.sha256(target.read_bytes()).digest()!=hashlib.sha256(canonical.read_bytes()).digest():
+        raise RuntimeError("Failed to normalize frozen Python ZIP: "+folder.name)
+print("CANONICAL_EMBEDDED_PYTHON_ZIP_VERIFIED_AND_SHARED",flush=True)
+
+# Verify that zlib1.dll is deployed alongside the embedded Python runtime.
 # PyInstaller's dependency graph can omit it from a minimal updater, which
 # otherwise crashes with "Failed to import encodings module". Reuse the trusted,
 # locally bundled Python runtime DLL; never download a random binary.
@@ -88,6 +139,29 @@ for item in outputs:
     item["bundle_bytes"]=sum(f.stat().st_size for f in component.rglob("*") if f.is_file())
 gate_result=audit_all(DIST)
 print("RUNTIME_PREREQUISITES_AUDIT_PASS",json.dumps(gate_result),flush=True)
+
+# Real startup probes for every frozen binary. File-presence and SHA audits
+# cannot prove that Python's ZIP importer is actually bootable.
+for component, arguments, expected in (
+        ("UniversalRemote-Preview", ["--self-test"], None),
+        ("UniversalRemoteAgent-Preview", ["--health-probe"], "UNIVERSAL_REMOTE_AGENT_HEALTH_OK"),
+        ("UniversalRemoteBridge-Preview", ["--health-probe"], "UNIVERSAL_REMOTE_TUNNEL_BRIDGE_HEALTH_OK"),
+        ("UniversalRemoteUpdater-Preview", ["trust-profile"], '"channel": "PRIVATE_QA"'),
+        ("UniversalRemoteTunnel-Preview", ["--self-test"], "UNIVERSAL_REMOTE_TUNNEL_SELFTEST_OK")):
+    executable = DIST / component / (component + ".exe")
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith("_PYI_")
+                   and key.upper() not in {"PYINSTALLER_RESET_ENVIRONMENT",
+                                           "PYINSTALLER_SUPPRESS_SPLASH_SCREEN"}}
+    environment.pop("HARMONY_MCP_CONFIG", None)
+    environment.pop("CONTROL_PLANE_API_KEY", None)
+    result = subprocess.run([str(executable), *arguments],
+                            cwd=executable.parent, env=environment,
+                            capture_output=True, text=True, timeout=75)
+    if result.returncode != 0 or (expected and expected not in result.stdout):
+        print("FROZEN_STARTUP_PROBE_FAILED", component, "exit", result.returncode, flush=True)
+        raise SystemExit(7)
+    print("FROZEN_STARTUP_PROBE_PASS", component, flush=True)
 (DIST/"UNSIGNED-PREVIEW-NOT-FOR-PUBLICATION.txt").write_text(
     "UNSIGNED TEST ARTIFACT. NOT A CERTIFIED RELEASE.\n"
     "Use only for isolated local acceptance, never as an official download.\n"

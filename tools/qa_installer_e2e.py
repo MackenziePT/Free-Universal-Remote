@@ -96,12 +96,13 @@ def main():
             agent=install/"Agent"/"UniversalRemoteAgent-Preview.exe"
             updater=install/"Updater"/"UniversalRemoteUpdater-Preview.exe"
             tunnel=install/"Tunnel"/"UniversalRemoteTunnel-Preview.exe"
+            bridge=install/"Bridge"/"UniversalRemoteBridge-Preview.exe"
             tunnel_client=install/"bin"/"tunnel-client.exe"
             uninstall=install/"unins000.exe"
             runtime_script=install/"scripts"/"Prepare-PowerShell.ps1"
             resolver=install/"scripts"/"Resolve-PowerShell.ps1"
             independent_probe=install/"scripts"/"Test-Independent-PC.ps1"
-            for f in (gui,agent,updater,tunnel,tunnel_client,uninstall,runtime_script,resolver,independent_probe):
+            for f in (gui,agent,bridge,updater,tunnel,tunnel_client,uninstall,runtime_script,resolver,independent_probe):
                 assert f.is_file(),str(f)
             report["private_powershell_bootstrap_included"]=True
             report["installed_files_present"]=True
@@ -117,6 +118,9 @@ def main():
             tunnel_health=run("TUNNEL_SELFTEST",[str(tunnel),"--self-test"],env,limit=45)
             assert tunnel_health.returncode==0 and "UNIVERSAL_REMOTE_TUNNEL_SELFTEST_OK" in tunnel_health.stdout
             report["private_tunnel_sidecar_present"]=True
+            bridge_health=run("BRIDGE_HEALTH_PROBE",[str(bridge),"--health-probe"],env,limit=50)
+            assert bridge_health.returncode==0 and "UNIVERSAL_REMOTE_TUNNEL_BRIDGE_HEALTH_OK" in bridge_health.stdout
+            report["private_owner_bridge_verified"]=True
             before=run("GUI_SELFTEST",[str(gui),"--self-test"],env,limit=120)
             assert before.returncode==0,before.stderr[-500:]
             report["gui_six_pages"]=True

@@ -53,7 +53,7 @@ class FirstRunSecurity(unittest.TestCase):
             assert Path(dst)==target
             target.write_bytes(b"CONCURRENT CONFIG, PRESERVE THIS FILE")
             raise FileExistsError("Second instance already created config")
-        with patch("public_paths.os.link",side_effect=concurrent_copy):
+        with patch("public_paths.os.rename" if os.name=="nt" else "public_paths.os.link",side_effect=concurrent_copy):
             with self.assertRaises(FileExistsError):
                 write_initial_config(self.work)
         self.assertEqual(target.read_bytes(),b"CONCURRENT CONFIG, PRESERVE THIS FILE")

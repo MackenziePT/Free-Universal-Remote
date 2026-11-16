@@ -52,7 +52,7 @@ class PublicReadinessTests(unittest.TestCase):
             path.mkdir(parents=True)
             shell=path/"pwsh.exe"
             shell.write_bytes(b"placeholder")
-            with patch.dict(os.environ,{"LOCALAPPDATA":tmp}), \
+            with patch.dict(os.environ,{"LOCALAPPDATA":tmp, "ProgramFiles":str(Path(tmp)/"no-global-pwsh")}), \
                  patch.object(remote_core.os,"name","nt"), \
                  patch("remote_core.shutil.which", side_effect=lambda k: None if k=="pwsh.exe" else "powershell.exe"), \
                  patch("remote_core.run_limited_process",return_value={"exit_code":0}) as run:

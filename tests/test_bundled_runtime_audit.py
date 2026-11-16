@@ -29,6 +29,12 @@ class BundledRuntimeReleaseTests(unittest.TestCase):
             (self.inner/name).write_bytes(b"test")
         fake_pe(self.inner/"python314.dll")
 
+    def test_python313_embedded_runtime_is_accepted(self):
+        (self.inner/"python314.dll").unlink()
+        fake_pe(self.inner/"python313.dll")
+        result=audit_one(self.root,"UniversalRemote-Preview.exe")
+        self.assertTrue(result["embedded_python"])
+
     def test_all_required_python_and_windows_runtime_files_detected(self):
         report=audit_one(self.root,"UniversalRemote-Preview.exe")
         self.assertTrue(report["embedded_python"])

@@ -5,6 +5,16 @@ import sys
 from pathlib import Path
 
 def main() -> int:
+    # The owner-approved private tunnel signs per-device requests locally.
+    # Normal local stdio and individually paired entrypoints remain unchanged.
+    if sys.argv[1:] == ["--bridge-health-probe"]:
+        from private_tunnel_bridge import configure_signed_private_tunnel
+        print("UNIVERSAL_REMOTE_AGENT_PRIVATE_BRIDGE_HEALTH_OK")
+        return 0
+    if sys.argv[1:] in (["--bridge-enroll"], ["--tunnel-bridge"]):
+        import private_tunnel_bridge as private_bridge
+        sys.argv = [sys.argv[0]] + (["--enroll"] if sys.argv[1] == "--bridge-enroll" else [])
+        return private_bridge.main()
     if sys.argv[1:] == ["--health-probe"]:
         # Sidecar update health only: no private state, no MCP permissions.
         import mcp

@@ -19,8 +19,8 @@ DisableDirPage=no
 AllowNoIcons=yes
 OutputDir=..\evidence\qa\installer-build
 OutputBaseFilename=UniversalRemote-1.0.0-rc5.1-x64-PREVIEW-UNSIGNED
-Compression=lzma2/ultra64
-SolidCompression=yes
+Compression=zip/1
+SolidCompression=no
 WizardStyle=modern
 SetupLogging=yes
 Uninstallable=yes
@@ -50,15 +50,24 @@ VersionInfoProductVersion=1.0.0.51
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+portuguese.URProcessesMustClose=O Universal Remote ainda está em execução. Fecha a interface e desliga a ligação privada (Bridge/Túnel), depois volta a iniciar o instalador. Nenhum ficheiro foi alterado nesta tentativa.
+english.URProcessesMustClose=Universal Remote is still running. Close the GUI and disconnect the private Bridge/Tunnel, then run Setup again. No files were changed by this attempt.
+portuguese.URProcessCheckFailed=Não foi possível verificar se o Universal Remote está em execução. Por segurança, a atualização foi interrompida antes de alterar ficheiros. Verifica o serviço WMI e volta a tentar.
+english.URProcessCheckFailed=Unable to verify whether Universal Remote is running. For safety, the update stopped before changing files. Check the Windows WMI service and retry.
+
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho no Ambiente de Trabalho"; GroupDescription: "Atalhos adicionais:"; Flags: unchecked
 
 [Files]
 Source: "{#PackageRoot}\UniversalRemote-Preview\*"; DestDir: "{app}\GUI"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteAgent-Preview\*"; DestDir: "{app}\Agent"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PackageRoot}\UniversalRemoteBridge-Preview\*"; DestDir: "{app}\Bridge"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteUpdater-Preview\*"; DestDir: "{app}\Updater"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#PackageRoot}\UniversalRemoteTunnel-Preview\*"; DestDir: "{app}\Tunnel"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\bin\tunnel-client.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\bin\cloudflared.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\bin\cloudflared-manifest.json"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\tunnel-client-origin.json"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\LICENSE"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\bin\NOTICE"; DestDir: "{app}\bin"; Flags: ignoreversion
@@ -84,6 +93,33 @@ Filename: "{app}\GUI\UniversalRemote-Preview.exe"; Description: "Abrir Universal
 [Code]
 var
   InstallURProtocol: Boolean;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Locator, Service, SetOfProcesses: Variant;
+begin
+  { Fail closed before [Files] starts: the current GUI or private bridge may be
+    holding installed EXEs open. Restart Manager can detect these but may not
+    be allowed to close them for a lowest-privilege setup. Never silently
+    skip locked binaries or install a mixture of old and new components. }
+  Result := '';
+  NeedsRestart := False;
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Service := Locator.ConnectServer('.', 'root\CIMV2', '', '');
+    SetOfProcesses := Service.ExecQuery(
+      'SELECT Name FROM Win32_Process WHERE ' +
+      'Name="UniversalRemote-Preview.exe" OR ' +
+      'Name="UniversalRemoteAgent-Preview.exe" OR ' +
+      'Name="UniversalRemoteBridge-Preview.exe" OR ' +
+      'Name="UniversalRemoteTunnel-Preview.exe" OR ' +
+      'Name="UniversalRemoteUpdater-Preview.exe"');
+    if SetOfProcesses.Count > 0 then
+      Result := CustomMessage('URProcessesMustClose');
+  except
+    Result := CustomMessage('URProcessCheckFailed');
+  end;
+end;
 
 function InitializeSetup(): Boolean;
 begin

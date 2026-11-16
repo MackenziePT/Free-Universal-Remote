@@ -14,13 +14,17 @@ ROOT=Path(__file__).resolve().parents[1]
 # This import is for synthetic test configuration only; neither EXE uses Python on PATH.
 import sys
 sys.path.insert(0,str(ROOT))
+from process_runner import clean_child_environment
 QA=ROOT/"evidence"/"qa"
 DIST=QA/"public-portable-prototype"
 UI=DIST/"UniversalRemote-Preview"/"UniversalRemote-Preview.exe"
 AGENT=DIST/"UniversalRemoteAgent-Preview"/"UniversalRemoteAgent-Preview.exe"
+BRIDGE=DIST/"UniversalRemoteBridge-Preview"/"UniversalRemoteBridge-Preview.exe"
+TUNNEL=DIST/"UniversalRemoteTunnel-Preview"/"UniversalRemoteTunnel-Preview.exe"
+UPDATER=DIST/"UniversalRemoteUpdater-Preview"/"UniversalRemoteUpdater-Preview.exe"
 
 def env_for_user(state:Path)->dict:
-    env=os.environ.copy()
+    env=clean_child_environment()
     env["LOCALAPPDATA"]=str(state)
     env["PYTHONNOUSERSITE"]="1"
     env["PATH"]=os.pathsep.join([str(Path(os.environ["SystemRoot"])/"System32"),os.environ["SystemRoot"]])
@@ -45,7 +49,9 @@ async def test_mcp(exe:Path,env:dict)->int:
             return len(listing.tools)
 
 def main():
-    for executable in (UI,AGENT):
+    # A stale success report must never survive a failed executable verification.
+    (QA/"standalone-acceptance.json").unlink(missing_ok=True)
+    for executable in (UI,AGENT,BRIDGE,TUNNEL,UPDATER):
         assert executable.is_file(),executable
     results={}
     with tempfile.TemporaryDirectory(prefix="urm-selfcontained-") as raw:
@@ -60,6 +66,17 @@ def main():
                            capture_output=True,text=True,timeout=120)
         assert gui.returncode==0,(gui.returncode,gui.stderr[-1000:])
         results["bundled_ui_six_pages"]=True
+        # Verify every independently bundled executable starts without Python on PATH.
+        for label, executable, arguments, marker in (
+                ("agent_health", AGENT, ["--health-probe"], "UNIVERSAL_REMOTE_AGENT_HEALTH_OK"),
+                ("bridge_health", BRIDGE, ["--health-probe"], "UNIVERSAL_REMOTE_TUNNEL_BRIDGE_HEALTH_OK"),
+                ("tunnel_health", TUNNEL, ["--self-test"], "UNIVERSAL_REMOTE_TUNNEL_SELFTEST_OK"),
+                ("updater_health", UPDATER, ["trust-profile"], '"channel": "PRIVATE_QA"')):
+            probe=subprocess.run([str(executable),*arguments],env=env,
+                                 capture_output=True,text=True,timeout=60)
+            assert probe.returncode==0 and marker in probe.stdout, (
+                label,probe.returncode,probe.stdout[-500:],probe.stderr[-500:])
+            results[label]=True
         assert not (state/"UniversalRemote"/"grants.json").exists()
         # Create policy with only the developer's QA Python process, NOT with the
         # frozen agent. The frozen agent itself must run without Python on PATH.

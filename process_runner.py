@@ -13,6 +13,21 @@ import subprocess
 import time
 
 
+def clean_child_environment(source: dict[str, str] | None = None) -> dict[str, str]:
+    """Isolate unrelated subprocesses from inherited PyInstaller bootloader state.
+
+    Preserve normal user variables and PATH; discard only PyInstaller's
+    process-internal bootstrap keys, which are invalid for another executable.
+    """
+    environment = dict(os.environ if source is None else source)
+    for name in tuple(environment):
+        if name.upper().startswith("_PYI_") or name.upper() in {
+                "PYINSTALLER_RESET_ENVIRONMENT",
+                "PYINSTALLER_SUPPRESS_SPLASH_SCREEN"}:
+            environment.pop(name, None)
+    return environment
+
+
 def _pipe_reader():
     if os.name != 'nt':
         def read(stream):
@@ -78,6 +93,7 @@ def run_limited_process(command: list[str], timeout: float, stdout_limit: int = 
         flags |= getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
     process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, bufsize=0, creationflags=flags,
+                               env=clean_child_environment(),
                                start_new_session=os.name != 'nt')
     streams = {'stdout': process.stdout, 'stderr': process.stderr}
     buffers = {name: bytearray() for name in streams}

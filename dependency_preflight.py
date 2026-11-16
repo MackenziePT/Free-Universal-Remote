@@ -12,8 +12,8 @@ from pathlib import Path
 import sys
 
 
+BUNDLED_PYTHON_VARIANTS = ("python313.dll", "python314.dll")
 BUNDLED_PYTHON_FILES = (
-    "python314.dll",
     "python3.dll",
     "base_library.zip",
     "VCRUNTIME140.dll",
@@ -44,6 +44,9 @@ def bundled_runtime_check() -> Readiness:
                          "Ambiente de desenvolvimento; Python incluído no futuro executável.")
     base = runtime_dir()
     missing = [name for name in BUNDLED_PYTHON_FILES if not (base / name).is_file()]
+    python_dlls = [name for name in BUNDLED_PYTHON_VARIANTS if (base / name).is_file()]
+    if len(python_dlls) != 1:
+        missing.append("exactly one supported Python runtime DLL")
     if missing:
         return Readiness("runtime", "Motor da aplicação", False, True,
                          "Faltam ficheiros do programa: " + ", ".join(missing)

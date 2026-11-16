@@ -88,7 +88,18 @@ def write_initial_config(folder: str | Path, permissions: dict[str,bool] | None 
         # volume NTFS hardlink is an atomic no-clobber publish; open("x") would
         # expose a partially written config to a competing application.
         load_config(candidate)
-        os.link(candidate,target)
+        if os.name == "nt":
+            # On Windows rename is atomic and refuses to replace an existing target.
+            # Unlike NTFS hardlinks, it works under common endpoint-security policies.
+            try:
+                os.rename(candidate, target)
+            except OSError as exc:
+                if target.exists():
+                    raise FileExistsError("Initial configuration already exists") from exc
+                raise
+        else:
+            # POSIX rename can overwrite a target: retain exclusive publication.
+            os.link(candidate,target)
     finally:
         candidate.unlink(missing_ok=True)
     return target

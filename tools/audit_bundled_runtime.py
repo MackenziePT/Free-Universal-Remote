@@ -6,7 +6,7 @@ import struct
 import sys
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from dependency_preflight import BUNDLED_PYTHON_FILES
+from dependency_preflight import BUNDLED_PYTHON_FILES, BUNDLED_PYTHON_VARIANTS
 
 PRODUCT_MACHINE = 0x8664  # IMAGE_FILE_MACHINE_AMD64
 
@@ -32,10 +32,13 @@ def audit_one(directory:Path,executable:str,expected_machine:int=PRODUCT_MACHINE
     if not inner.is_dir():missing.append("_internal/")
     else:
         missing.extend(name for name in BUNDLED_PYTHON_FILES if not (inner/name).is_file())
+        python_dlls = [inner/name for name in BUNDLED_PYTHON_VARIANTS if (inner/name).is_file()]
+        if len(python_dlls) != 1:
+            missing.append("exactly one supported Python runtime DLL")
     if missing:
         raise ValueError(f"Bundle {directory.name}: missing required files: {', '.join(missing)}")
     exe_arch=pe_machine(exe)
-    dll_arch=pe_machine(inner/"python314.dll")
+    dll_arch=pe_machine(python_dlls[0])
     if exe_arch!=expected_machine or dll_arch!=expected_machine:
         raise ValueError(f"Wrong architecture in {directory.name}: exe={exe_arch:x}, Python={dll_arch:x}")
     return {"component":directory.name,"architecture":"Windows x64","embedded_python":True,
@@ -45,6 +48,7 @@ def audit_all(distribution:Path)->list[dict]:
     return [
         audit_one(distribution/"UniversalRemote-Preview","UniversalRemote-Preview.exe"),
         audit_one(distribution/"UniversalRemoteAgent-Preview","UniversalRemoteAgent-Preview.exe"),
+        audit_one(distribution/"UniversalRemoteBridge-Preview","UniversalRemoteBridge-Preview.exe"),
         audit_one(distribution/"UniversalRemoteUpdater-Preview","UniversalRemoteUpdater-Preview.exe"),
         audit_one(distribution/"UniversalRemoteTunnel-Preview","UniversalRemoteTunnel-Preview.exe")
     ]

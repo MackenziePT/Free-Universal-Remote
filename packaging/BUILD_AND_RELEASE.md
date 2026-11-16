@@ -10,7 +10,7 @@
 
 ## Ambiente de compilação atual
 
-- Windows 11 x64, Python 3.14 em venv isolada.
+- Windows 11 x64, **Python 3.13** em venv isolada (compilação RC5.1 verificada com Python 3.13.14). Rejeitar builds frozen Python 3.14: foi reproduzida uma falha de importação de `encodings` nos executáveis.
 - PyInstaller 6.22.3, bundles one-dir, sem UPX, sem compressão de executáveis por terceiros.
 - Inno Setup 7.1.0 x64, adquirido de `jrsoftware/issrc` e verificado pela assinatura `Pyrsys B.V.`.
 - Se a distribuição for comercial, confirmar e respeitar os termos de licenciamento do Inno Setup antes da publicação.

@@ -20,7 +20,7 @@ class SimpleOnboardingTests(unittest.TestCase):
                     app._next()
                     self.assertEqual(app.step,1)
                     self.assertFalse(app.show_advanced.get())
-                    self.assertFalse(any(v.get() for v in app.options.values()))
+                    self.assertTrue(all(v.get() for v in app.options.values()))
                     app._next()
                     self.assertEqual(app.step,2)
                     self.assertFalse((Path(tmp)/"UniversalRemote"/"config.json").exists())

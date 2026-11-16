@@ -20,6 +20,7 @@ class DependencyReadinessTests(unittest.TestCase):
             base=Path(tmp)/"_internal";base.mkdir()
             for name in dp.BUNDLED_PYTHON_FILES:
                 (base/name).write_bytes(b"fake only for test")
+            (base/"python314.dll").write_bytes(b"fake only for test")
             with patch.object(sys,"frozen",True,create=True), \
                  patch.object(sys,"_MEIPASS",str(base),create=True), \
                  patch.dict(os.environ,{"PATH":str(Path(tmp)/"empty-bin")},clear=False):

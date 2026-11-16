@@ -11,6 +11,7 @@ DIST=ROOT/"evidence"/"qa"/"public-portable-prototype"
 PARTS=(
  ("GUI","UniversalRemote-Preview","--self-test",""),
  ("AGENT","UniversalRemoteAgent-Preview","--health-probe","UNIVERSAL_REMOTE_AGENT_HEALTH_OK"),
+ ("BRIDGE","UniversalRemoteBridge-Preview","--health-probe","UNIVERSAL_REMOTE_TUNNEL_BRIDGE_HEALTH_OK"),
  ("TUNNEL","UniversalRemoteTunnel-Preview","--self-test","UNIVERSAL_REMOTE_TUNNEL_SELFTEST_OK"),
  ("UPDATER","UniversalRemoteUpdater-Preview","trust-profile",'"channel": "PRIVATE_QA"'),
 )

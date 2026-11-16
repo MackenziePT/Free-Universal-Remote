@@ -1,9 +1,9 @@
 name: Supply-chain and security checks
 on:
   pull_request:
-    branches: ["main", "develop"]
+    branches: ["main", "develop", "fix/rc51-windows-verified-20261115"]
   push:
-    branches: ["main", "develop"]
+    branches: ["main", "develop", "fix/rc51-windows-verified-20261115"]
 permissions:
   contents: read
 
@@ -20,7 +20,7 @@ jobs:
       - name: Python for analysis (not a user-install requirement)
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.13"
       - name: Prepare disposable QA runtime
         shell: pwsh
         run: |

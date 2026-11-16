@@ -107,6 +107,42 @@ def revoke_local(config=None):
     target.unlink(missing_ok=True)
 
 
+def emergency_revoke_and_stop(config, jobs) -> dict:
+    """Locally revoke new calls, then attempt to stop every registered active job.
+
+    This is best effort. In-flight remote requests and untracked child processes
+    are not guaranteed to terminate; report inability to verify instead of
+    displaying a misleading success message.
+    """
+    revoke_local(config)
+    stopped = []
+    failures = {}
+    try:
+        for _ in range(2):
+            running = jobs.running_jobs()
+            if not running:
+                break
+            for task in running:
+                job_id = task["job_id"]
+                try:
+                    status = jobs.stop(job_id)["status"]
+                    if status in ("stopped", "exited", "exited_unobserved"):
+                        if job_id not in stopped:
+                            stopped.append(job_id)
+                        failures.pop(job_id, None)
+                    else:
+                        failures[job_id] = "state " + str(status)
+                except Exception as exc:
+                    failures[job_id] = type(exc).__name__
+        remaining = [task["job_id"] for task in jobs.running_jobs()]
+    except Exception as exc:
+        return {"revoked": True, "stopped": stopped, "remaining": [],
+                "errors": ["Cannot verify active task inventory: " + type(exc).__name__]}
+    return {"revoked": True, "stopped": stopped, "remaining": remaining,
+            "errors": [job_id + ": " + failures.get(job_id, "still running")
+                       for job_id in remaining]}
+
+
 class UniversalRemoteApp(tk.Tk):
     def __init__(self, start_page="Início"):
         super().__init__()
@@ -658,6 +694,8 @@ class UniversalRemoteApp(tk.Tk):
         self._label(control, "Revoga novas ações e a leitura remota de logs. Tarefas existentes continuam até serem paradas.",
                     10, MUTED, wraplength=630).pack(anchor="w", pady=(8, 12))
         self._button(control, "Revogar acesso agora", self._revoke, danger=True).pack(anchor="w")
+        self._button(control, "EMERGÊNCIA: revogar e parar tarefas",
+                     self._emergency_stop, danger=True).pack(anchor="w", pady=(10, 0))
 
     def _grant(self, minutes):
         caps = {"Ficheiros": ["writes"], "Desenvolvimento": ["writes", "shell"],
@@ -681,6 +719,30 @@ class UniversalRemoteApp(tk.Tk):
         if messagebox.askyesno("Revogar acesso", "Revogar agora as permissões privilegiadas?"):
             revoke_local(self.config_data)
             self.show("Acesso")
+
+    def _emergency_stop(self):
+        warning = ("Bloquear novas ações remotas e tentar terminar todas as tarefas "
+                   "iniciadas pelo Universal Remote?\n\n"
+                   "As tarefas interrompidas podem perder trabalho não guardado. "
+                   "Este botão não termina aplicações que não foram lançadas "
+                   "pelo gestor de tarefas do Universal Remote.")
+        if not messagebox.askyesno("Interrupção de emergência", warning, icon="warning"):
+            return
+        try:
+            report = emergency_revoke_and_stop(self.config_data, self.jobs)
+            self.show("Acesso")
+            if report["errors"] or report["remaining"]:
+                messagebox.showwarning(
+                    "Revogado; algumas tarefas necessitam de atenção",
+                    f"Tarefas paradas: {len(report['stopped'])}\n"
+                    f"Ainda ativas: {len(report['remaining'])}\n"
+                    f"Erros: {len(report['errors'])}.\n"
+                    "Verifica a página Tarefas e o Gestor de Tarefas do Windows.")
+            else:
+                messagebox.showinfo("Acesso revogado",
+                    f"Novas ações remotas bloqueadas; {len(report['stopped'])} tarefas paradas.")
+        except Exception as exc:
+            self._notify_error(exc, context="permissions")
 
     def _tasks(self):
         self._heading("Tarefas da IA", "Processos iniciados pelo Universal Remote; estado persistente após reconexões.")
