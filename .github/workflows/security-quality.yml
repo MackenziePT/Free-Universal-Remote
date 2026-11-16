@@ -42,7 +42,7 @@ jobs:
           cyclonedx-py environment --output-reproducible --of JSON -o qa/sbom-cyclonedx.json
       - name: Archive QA evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-quality-sbom
           path: qa/sbom-cyclonedx.json
