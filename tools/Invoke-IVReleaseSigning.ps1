@@ -22,7 +22,7 @@ $verify=Join-Path $PSScriptRoot 'Test-PublisherSignature.ps1'
 $signTool=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter 'signtool.exe' -Recurse -ErrorAction Stop | Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
 $inno=Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 7\ISCC.exe'
 $names=@('UniversalRemote-Preview','UniversalRemoteAgent-Preview',
-         'UniversalRemoteUpdater-Preview','UniversalRemoteTunnel-Preview')
+         'UniversalRemoteBridge-Preview','UniversalRemoteUpdater-Preview','UniversalRemoteTunnel-Preview')
 function Refuse([string]$reason) { throw ('SIGNING_BLOCKED: '+$reason) }
 if (-not $signTool -or -not (Test-Path -LiteralPath $inno -PathType Leaf)) { Refuse 'SignTool or Inno Setup 7 missing' }
 foreach($file in @($iss,$verify)) {
