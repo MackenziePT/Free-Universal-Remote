@@ -86,10 +86,11 @@ class TunnelManagerTests(unittest.TestCase):
         profile=self.root/"universal-remote-preview.yaml"
         def init(args,**kwargs):
             value=args[args.index("--mcp-command")+1]
-            self.assertEqual(value,subprocess.list2cmdline([str(agent),"--paired"]))
+            self.assertEqual(value,__import__("shlex").join([str(agent),"--tunnel-bridge"]))
+            self.assertEqual(__import__("shlex").split(value),[str(agent),"--tunnel-bridge"])
             profile.write_text("tunnel_id: "+FAKE_ID+"\\n"
                 "api_key: env:CONTROL_PLANE_API_KEY\\n"
-                "command: "+str(agent)+" --paired"+"\\n",encoding="utf-8")
+                "command: "+str(agent)+" --tunnel-bridge"+"\\n",encoding="utf-8")
             return subprocess.CompletedProcess(args,0)
         with (patch.object(tm,"profile_path",return_value=profile),
               patch.object(tm,"verify_tunnel_client"),
@@ -110,7 +111,7 @@ class TunnelManagerTests(unittest.TestCase):
             self.assertIs(kwargs["stdout"],subprocess.DEVNULL)
             profile.write_text("tunnel_id: "+FAKE_ID+"\\n"+
                  "api_key: env:CONTROL_PLANE_API_KEY\\n"+
-                 "command: "+str(agent)+" --paired"+"\\n",encoding="utf-8")
+                 "command: "+str(agent)+" --tunnel-bridge"+"\\n",encoding="utf-8")
             return subprocess.CompletedProcess(args,0)
         with (patch.object(tm,"profile_path",return_value=profile),
               patch.object(tm,"verify_tunnel_client"),
