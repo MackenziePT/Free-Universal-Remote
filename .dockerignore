@@ -1,0 +1,12 @@
+# Include only the production gateway and pinned dependency list.
+*
+!cloud/
+!cloud/**
+!requirements-public-gateway.txt
+!Dockerfile.public-gateway
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.env
+**/*.key
+**/*.pem

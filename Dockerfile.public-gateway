@@ -1,0 +1,17 @@
+FROM python:3.13-slim
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends gosu \\
+ && rm -rf /var/lib/apt/lists/* \\
+ && groupadd --system universal-remote \\
+ && useradd --system --ingroup universal-remote universal-remote
+COPY requirements-public-gateway.txt /app/requirements-public-gateway.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements-public-gateway.txt \\
+ && python -m pip check
+COPY cloud /app/cloud
+RUN mkdir -p /state && chown -R universal-remote:universal-remote /app /state
+# Railway volumes mount as root. The entrypoint adjusts the mounted volume,
+# then immediately drops privileges before the gateway handles traffic.
+ENV PORT=8019
+EXPOSE 8019
+CMD ["sh","-ec","chown -R universal-remote:universal-remote /state && exec gosu universal-remote uvicorn cloud.launch:app --host 0.0.0.0 --port ${PORT:-8019} --proxy-headers"]

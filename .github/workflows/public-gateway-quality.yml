@@ -1,0 +1,51 @@
+name: Public gateway preproduction quality
+on:
+  push:
+    branches: [main, feat/public-gateway-20261117]
+    paths:
+      - "cloud/**"
+      - "cloud_tests/**"
+      - "requirements-public-gateway.txt"
+      - "Dockerfile.public-gateway"
+      - ".dockerignore"
+      - ".github/workflows/public-gateway-quality.yml"
+  pull_request:
+    paths:
+      - "cloud/**"
+      - "cloud_tests/**"
+      - "requirements-public-gateway.txt"
+      - "Dockerfile.public-gateway"
+      - ".dockerignore"
+      - ".github/workflows/public-gateway-quality.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install production-pinned gateway dependencies and test runner
+        run: python -m pip install -r requirements-public-gateway.txt pytest==9.0.2
+      - name: Install real Windows RC5.1 native dependencies
+        if: runner.os == 'Windows'
+        run: python -m pip install -r requirements.txt
+      - name: Verify dependency resolution
+        run: python -m pip check
+      - name: Run cloud isolation and real Windows native bridge tests
+        run: python -m pytest -q cloud_tests
+  gateway-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production gateway Dockerfile
+        run: docker build --pull -f Dockerfile.public-gateway -t universal-remote-public-gateway:ci .
