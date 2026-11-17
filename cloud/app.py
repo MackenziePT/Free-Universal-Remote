@@ -75,6 +75,36 @@ TOOL_DEFS = [
      "inputSchema":{"type":"object","properties":{"device_id":{"type":"string"},"confirmation":{"type":"string","enum":["REVOKE DEVICE"]}},"required":["device_id","confirmation"],"additionalProperties":False},
      "annotations":{"title":"Revoke Windows device","readOnlyHint":False,"openWorldHint":False,"destructiveHint":True}},
 ]
+# Expose the exact OAuth permission required for each tool to ChatGPT.
+# Read-only tool discovery does not imply any access to a Windows device.
+TOOL_SCOPES = {
+    "list_windows_devices": ["ur:read"],
+    "get_windows_device": ["ur:read"],
+    "get_windows_operation": ["ur:read"],
+    "revoke_windows_device": ["ur:read", "ur:devices"],
+    "request_windows_diagnostic": ["ur:read", "ur:control"],
+    "request_windows_file_read": ["ur:read", "ur:control"],
+    "request_windows_powershell": ["ur:read", "ur:shell"],
+    "request_windows_screenshot": ["ur:read", "ur:screen"],
+    "get_profile": ["ur:read"],
+}
+TOOL_DEFS.append({
+    "name": "get_profile",
+    "description": "Return the stable, opaque profile id from the signed-in account. Never returns another user's profile.",
+    "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    "outputSchema": {"$schema": "https://json-schema.org/draft/2020-12/schema",
+                     "type": "object", "properties": {"id": {
+                         "type": "string", "minLength": 1, "pattern": r"\S"}},
+                     "required": ["id"], "additionalProperties": False},
+    "annotations": {"title": "My Universal Remote profile", "readOnlyHint": True,
+                    "openWorldHint": False, "destructiveHint": False},
+    "_meta": {"openai/profile": True},
+})
+for _description in TOOL_DEFS:
+    _schemes = [{"type": "oauth2", "scopes": TOOL_SCOPES[_description["name"]]}]
+    _description["securitySchemes"] = _schemes
+    _description.setdefault("_meta", {})["securitySchemes"] = _schemes
+
 TOOLS={t["name"]:t for t in TOOL_DEFS}
 
 
@@ -82,6 +112,16 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
                challenge_token: Optional[str]=None) -> FastAPI:
     app=FastAPI(title="Universal Remote Public MCP",version=VERSION,
                 docs_url=None,redoc_url=None,openapi_url=None)
+
+    async def capped_body(request: Request, max_bytes: int) -> bytes:
+        # Content-Length can be absent for chunked requests; enforce an actual
+        # streaming limit before buffering or deserializing untrusted payloads.
+        pieces=bytearray()
+        async for chunk in request.stream():
+            if len(chunk)>max_bytes-len(pieces):
+                raise HTTPException(413, "Payload too large")
+            pieces.extend(chunk)
+        return bytes(pieces)
 
     @app.middleware("http")
     async def headers(request: Request, next_call):
@@ -150,6 +190,8 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             raise Denied("Unknown or missing tool input")
         user.requires("ur:read")
         owner=user.account
+        if name=="get_profile":
+            return {"id": owner}
         if name=="list_windows_devices":
             return {"devices":store.list_devices(owner)}
         if name=="get_windows_device":
@@ -232,7 +274,7 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             raise HTTPException(403,"Insufficient OAuth scope") from None
         owner=user.account
         try:
-            obj=await request.json()
+            obj=json.loads(await capped_body(request,150_000))
         except (ValueError,UnicodeError):
             raise HTTPException(400,"Invalid enrollment JSON") from None
         if not isinstance(obj,dict) or set(obj)!={"id","public_key","signature","label"}:
@@ -255,7 +297,7 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
 
     @app.post("/v1/agent/{device_id}/result")
     async def result(device_id:str,request:Request):
-        raw=await request.body()
+        raw=await capped_body(request,2_500_000)
         try:
             path=f"/v1/agent/{device_id}/result"
             verify_device(device_id,raw,"POST",path,request.headers)
@@ -269,9 +311,10 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
 
     @app.post("/mcp")
     async def mcp(request:Request,authorization: Optional[str]=Header(default=None)):
-        owner=principal(authorization)
+        # Initialization and tool discovery are safe without a token; execution
+        # never is. Otherwise ChatGPT cannot discover per-tool auth policies.
         try:
-            data=await request.json()
+            data=json.loads(await capped_body(request,150_000))
         except (ValueError,UnicodeError):
             return JSONResponse({"jsonrpc":"2.0","id":None,"error":{"code":-32700,"message":"Parse error"}},status_code=400)
         if not isinstance(data,dict) or data.get("jsonrpc")!="2.0" or not isinstance(data.get("method"),str):
@@ -282,6 +325,19 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             return Response(status_code=202)
         if not (isinstance(ident,int) or isinstance(ident,str)) or type(ident) is bool:
             return JSONResponse({"jsonrpc":"2.0","id":None,"error":{"code":-32600,"message":"Invalid request"}},status_code=400)
+        params=data.get("params", {})
+        owner=None
+        if method=="tools/call":
+            try:
+                owner=principal(authorization)
+            except HTTPException:
+                auth_header=(f'Bearer resource_metadata="{settings.public_origin}/.well-known/oauth-protected-resource", '
+                             'error="invalid_token", error_description="Sign in to Universal Remote"')
+                result={"isError":True,
+                        "content":[{"type":"text","text":"Universal Remote sign-in required"}],
+                        "_meta":{"mcp/www_authenticate":[auth_header]}}
+                return JSONResponse({"jsonrpc":"2.0","id":ident,"result":result},
+                                    headers={"MCP-Protocol-Version":"2025-06-18"})
         try:
             if method=="initialize":
                 payload={"protocolVersion":"2025-06-18", "capabilities":{"tools":{"listChanged":False}},
@@ -300,7 +356,15 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
                          "structuredContent":value,"isError":False}
             else:
                 return JSONResponse({"jsonrpc":"2.0","id":ident,"error":{"code":-32601,"message":"Method not found"}})
-        except (Denied,Unauthorized,KeyError,TypeError,ValueError) as exc:
+        except Unauthorized:
+            requested=params.get("name") if isinstance(params,dict) else None
+            scopes=TOOL_SCOPES.get(requested, ["ur:read"])
+            challenge=(f'Bearer resource_metadata="{settings.public_origin}/.well-known/oauth-protected-resource", '
+                       'error="insufficient_scope", error_description="Additional Universal Remote permission required", '
+                       f'scope="{" ".join(scopes)}"')
+            payload={"content":[{"type":"text","text":"Additional authorization required"}],
+                     "isError":True,"_meta":{"mcp/www_authenticate":[challenge]}}
+        except (Denied,KeyError,TypeError,ValueError) as exc:
             payload={"content":[{"type":"text","text":"Operation denied or unavailable"}],"isError":True}
             if method!="tools/call":
                 return JSONResponse({"jsonrpc":"2.0","id":ident,"error":{"code":-32602,"message":"Invalid parameters"}})

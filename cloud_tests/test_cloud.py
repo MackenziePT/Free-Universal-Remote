@@ -89,20 +89,32 @@ def test_health_and_oauth_discovery(world):
 
 def test_requires_bearer_on_mcp(world):
     c=world['client']
-    r=c.post('/mcp',json={'jsonrpc':'2.0','id':1,'method':'tools/list'})
-    assert r.status_code==401
-    assert 'resource_metadata=' in r.headers['www-authenticate']
-
+    req={'jsonrpc':'2.0','id':1,'method':'tools/call',
+         'params':{'name':'list_windows_devices','arguments':{}}}
+    r=c.post('/mcp',json=req)
+    assert r.status_code==200
+    result=r.json()['result']
+    assert result['isError'] is True
+    assert 'mcp/www_authenticate' in result['_meta']
+    assert 'structuredContent' not in result
 
 def test_wrong_audience_denied(world):
     c=world['client']; h=world['auth']('alice',aud='https://other.example.org')
-    assert c.post('/mcp',headers=h,json={'jsonrpc':'2.0','id':1,'method':'tools/list'}).status_code==401
-
+    req={'jsonrpc':'2.0','id':1,'method':'tools/call',
+         'params':{'name':'list_windows_devices','arguments':{}}}
+    result=c.post('/mcp',headers=h,json=req).json()['result']
+    assert result['isError'] is True
+    assert 'invalid_token' in result['_meta']['mcp/www_authenticate'][0]
+    assert 'structuredContent' not in result
 
 def test_expired_token_denied(world):
     c=world['client']; h=world['auth']('alice',exp=int(time.time())-3600,iat=int(time.time())-7200)
-    assert c.post('/mcp',headers=h,json={'jsonrpc':'2.0','id':1,'method':'tools/list'}).status_code==401
-
+    req={'jsonrpc':'2.0','id':1,'method':'tools/call',
+         'params':{'name':'list_windows_devices','arguments':{}}}
+    result=c.post('/mcp',headers=h,json=req).json()['result']
+    assert result['isError'] is True
+    assert 'invalid_token' in result['_meta']['mcp/www_authenticate'][0]
+    assert 'structuredContent' not in result
 
 def test_mcp_initialize_and_tools(world):
     c=world['client'];h=world['auth']()
