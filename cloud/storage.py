@@ -21,6 +21,11 @@ class Denied(PermissionError):
     pass
 
 
+# Completed operation outputs are retained for at most one day after the
+# original five-minute job deadline. The next mutation purges old records.
+JOB_HISTORY_RETENTION_SECONDS = 24 * 3600
+
+
 def encode_json(value):
     return json.dumps(value, separators=(",", ":"), sort_keys=True,
                       ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -88,6 +93,10 @@ class Store:
         if blob is None or len(blob) < 29:
             raise Denied("Corrupt encrypted payload")
         return json.loads(self.crypt.decrypt(blob[:12], blob[12:], aad.encode()))
+
+    def _prune_jobs(self, connection, now: int) -> None:
+        connection.execute("DELETE FROM jobs WHERE expires < ?",
+                           (now - JOB_HISTORY_RETENTION_SECONDS,))
 
     def begin_enrollment(self, owner):
         now = int(self.clock())
@@ -157,7 +166,10 @@ class Store:
                               (now,owner,device)).rowcount
             if not changed:
                 raise Denied("Device unavailable")
-            c.execute("UPDATE jobs SET status='revoked', args=X'', result=NULL WHERE device=? AND status IN ('queued','leased')",(device,))
+            # A revoked device must not leave historical file contents or
+            # command outputs readable from a prior operation ID.
+            c.execute("UPDATE jobs SET status='revoked', args=X'', result=NULL WHERE device=?",
+                      (device,))
 
     def submit(self, owner, device, operation, args):
         now=int(self.clock())
@@ -165,6 +177,7 @@ class Store:
         encrypted=self._seal(args,"args:"+ident)
         with self._connect() as c:
             c.execute("BEGIN IMMEDIATE")
+            self._prune_jobs(c, now)
             if not c.execute("SELECT 1 FROM devices WHERE id=? AND owner=? AND revoked IS NULL",
                              (device,owner)).fetchone():
                 raise Denied("Device unavailable")
@@ -180,6 +193,8 @@ class Store:
             r=c.execute("SELECT status,result,expires FROM jobs WHERE id=? AND owner=?",(ident,owner)).fetchone()
         if not r:
             raise Denied("Operation unavailable")
+        if r[2] < int(self.clock()) - JOB_HISTORY_RETENTION_SECONDS:
+            raise Denied("Operation history retention expired")
         if r[2] < int(self.clock()) and r[0] not in ('done','failed','revoked'):
             return {"operation_id":ident,"status":"expired"}
         ans={"operation_id":ident,"status":r[0]}
@@ -210,6 +225,7 @@ class Store:
         now=int(self.clock())
         with self._connect() as c:
             c.execute("BEGIN IMMEDIATE")
+            self._prune_jobs(c, now)
             if not c.execute("SELECT 1 FROM devices WHERE id=? AND revoked IS NULL",(device,)).fetchone():
                 raise Denied("Device unavailable")
             c.execute("UPDATE jobs SET status='expired' WHERE device=? AND expires<? AND status IN ('queued','leased')",(device,now))
