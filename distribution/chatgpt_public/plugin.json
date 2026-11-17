@@ -1,0 +1,42 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "universal-remote-free-unlimited",
+  "version": "1.1.0-rc.1",
+  "description": "Owner-authorized Windows diagnostics, files and desktop workflows via the Universal Remote application and an authenticated MCP gateway.",
+  "author": {
+    "name": "Goncalo Salgueiro"
+  },
+  "homepage": "https://github.com/MackenziePT/Free-Universal-Remote",
+  "repository": "https://github.com/MackenziePT/Free-Universal-Remote",
+  "keywords": [
+    "windows",
+    "remote-desktop",
+    "mcp",
+    "security",
+    "automation"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "longDescription": "Liga um PC Windows instalado e emparelhado ao ChatGPT através de um gateway MCP seguro. Permite diagnósticos, leitura de ficheiros autorizados, PowerShell e ações de ecrã, apenas após autenticação e permissões locais explícitas. Requer agente Windows instalado, emparelhamento individual e ligação ativa. Sem promessas de quotas ilimitadas de terceiros.",
+        "shortDescription": "Controla o teu Windows com autorização local.",
+        "capabilities": [
+          "Authenticated Windows device pairing",
+          "Windows diagnostics",
+          "Files within locally authorized roots",
+          "Locally approved PowerShell, screen, mouse and keyboard"
+        ],
+        "developerName": "Goncalo Salgueiro",
+        "brandColor": "#101A2D",
+        "defaultPrompt": [
+          "Ajuda-me a emparelhar o meu computador Windows com o Universal Remote Free Unlimited.",
+          "Mostra os dispositivos Windows que tenho emparelhados.",
+          "Faz um diagnóstico de leitura do meu PC emparelhado."
+        ],
+        "category": "Developer Tools",
+        "displayName": "Universal Remote Free Unlimited"
+      },
+      "onboardingSkill": "./skills/setup-universal-remote/SKILL.md"
+    }
+  }
+}

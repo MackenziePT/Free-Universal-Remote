@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "universal-remote-free": {
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "client": {
+              "mode": "cimd"
+            },
+            "type": "oauth",
+            "baseScopes": [
+              "ur:read"
+            ]
+          }
+        }
+      },
+      "url": "https://universal-remote-free-production.up.railway.app/mcp",
+      "type": "streamable-http"
+    }
+  }
+}
