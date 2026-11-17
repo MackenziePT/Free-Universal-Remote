@@ -4,7 +4,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends gosu \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system universal-remote \
- && useradd --system --ingroup universal-remote universal-remote
+ && useradd --system --no-create-home --gid universal-remote universal-remote
 COPY requirements-public-gateway.txt /app/requirements-public-gateway.txt
 RUN python -m pip install --no-cache-dir -r /app/requirements-public-gateway.txt \
  && python -m pip check
