@@ -271,6 +271,11 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
         return {"operation_id":store.submit(owner,device_id,op,args),"status":"queued",
                 "notice":"Execution still requires independent local Windows authorization."}
 
+    @app.get("/oauth/consent")
+    def consent_page():
+        from .consent_ui import consent_html_response
+        return consent_html_response()
+
     @app.get("/healthz")
     def health():
         return {"service":"universal-remote", "version":VERSION,"status":"gateway-running", "windows_access":"requires-owner-grant"}
@@ -422,6 +427,11 @@ def preflight_app() -> FastAPI:
     """
     preview = FastAPI(title="Universal Remote Deployment Preflight",
                       docs_url=None, redoc_url=None, openapi_url=None)
+
+    @preview.get("/oauth/consent")
+    def consent_page():
+        from .consent_ui import consent_html_response
+        return consent_html_response()
 
     @preview.get("/healthz")
     def healthz():
