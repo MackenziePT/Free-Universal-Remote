@@ -241,6 +241,11 @@ def activation_destination(arguments: list[str]) -> str:
     raise ValueError("Ligação de abertura inválida")
 
 def main()->int:
+    if sys.argv[1:] == ["--public-serve"]:
+        os.environ["HARMONY_MCP_CONFIG"]=str(config_path())
+        from cloud.public_link import run_agent
+        run_agent()
+        return 0
     policy=config_path()
     if "--self-test" in sys.argv:
         # Runtime-only probe: disposable config, no persistent grants, no live desktop.

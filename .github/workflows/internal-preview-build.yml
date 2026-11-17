@@ -1,7 +1,7 @@
 name: Unsigned internal Windows preview build
 on:
   push:
-    branches: ["fix/rc51-portability-ci-20261113", "fix/rc51-windows-verified-20261115"]
+    branches: ["fix/rc51-portability-ci-20261113", "fix/rc51-windows-verified-20261115", "feat/public-gateway-20261117"]
   workflow_dispatch:
 permissions:
   contents: read

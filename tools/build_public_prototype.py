@@ -21,7 +21,13 @@ SPEC.mkdir(parents=True,exist_ok=True)
 
 targets=[
     ("UniversalRemote-Preview","public_gui.py","windowed",
-     ["--hidden-import","pairing_management_ui",
+     ["--hidden-import","cloud.public_link_ui",
+      "--hidden-import","cloud.public_link_cli",
+      "--hidden-import","cloud.windows_identity",
+      "--hidden-import","cloud.native_dispatch",
+      "--hidden-import","server",
+      "--collect-submodules","mcp.server",
+      "--hidden-import","pairing_management_ui",
       "--hidden-import","device_pairing",
       "--hidden-import","help_center",
       "--hidden-import","guided_steps",

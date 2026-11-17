@@ -411,6 +411,11 @@ class UniversalRemoteApp(tk.Tk):
 
     def _connections(self):
         self._heading("Conexões", "Um único motor; vários agentes de IA compatíveis com MCP.")
+        public_box = self._card()
+        public_box.pack(fill="x", pady=(0,14))
+        self._label(public_box, "Universal Remote Free Unlimited  •  ChatGPT público", 14, TEXT, bold=True).pack(anchor="w")
+        self._label(public_box, "Emparelha o teu PC através do navegador. A ligação usa o gateway HTTPS e cada operação continua sujeita à autorização local do Windows.", 10, TEXT, wraplength=630).pack(anchor="w",pady=(9,9))
+        self._button(public_box, "Ligar este PC ao ChatGPT", self._open_public_link, accent=True).pack(anchor="w",pady=(3,10))
         box = self._card()
         box.pack(fill="x", pady=(0, 14))
         self._label(box, "ChatGPT  •  Túnel privado", 14, TEXT, bold=True).pack(anchor="w")
@@ -468,6 +473,12 @@ class UniversalRemoteApp(tk.Tk):
         self._pwsh_status = self._label(extra, "", 9, MUTED)
         self._pwsh_status.pack(anchor="w", pady=(8,0))
 
+    def _open_public_link(self):
+        try:
+            from cloud.public_link_ui import show_public_link_window
+            show_public_link_window(self)
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._notify_error(exc, context="pairing")
     def _open_tunnel_setup(self):
         try:
             from tunnel_setup_ui import show_tunnel_setup
