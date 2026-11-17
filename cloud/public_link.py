@@ -133,7 +133,9 @@ def connect_windows(cfg,label, *,note=None,open_browser=None):
     from .windows_identity import default_identity_path,save_identity
     path=default_identity_path()
     if path.exists():raise LinkError("Device already paired; do not overwrite")
-    bearer=device_authorize(cfg,note=note,open_browser=open_browser)
+    from .oauth_pkce import authorize
+    if note: note("Inicia sessão no navegador e confirma as permissões solicitadas.")
+    bearer=authorize(cfg.issuer,cfg.client_id,open_browser=open_browser)
     return enroll_windows(cfg,bearer,label,save_identity=lambda signer,origin,ident:
                           save_identity(path,signer,origin,ident))
 

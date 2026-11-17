@@ -113,7 +113,18 @@ TOOLS={t["name"]:t for t in TOOL_DEFS}
 
 
 def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
-               challenge_token: Optional[str]=None) -> FastAPI:
+               challenge_token: Optional[str]=None, provider_mode: str="oidc") -> FastAPI:
+    if provider_mode not in ("oidc","supabase"):
+        raise ValueError("Unknown OAuth provider mode")
+    # Supabase supports only OIDC profile scopes, not ur:* OAuth scopes.
+    # All Windows privileges remain governed by signed OAuth client ID and
+    # independent native local grants; do not suggest unsupported elevation.
+    public_tools=json.loads(json.dumps(TOOL_DEFS))
+    if provider_mode=="supabase":
+        for tool in public_tools:
+            schemes=[{"type":"oauth2","scopes":["openid"]}]
+            tool["securitySchemes"]=schemes
+            tool.setdefault("_meta",{})["securitySchemes"]=schemes
     app=FastAPI(title="Universal Remote Public MCP",version=VERSION,
                 docs_url=None,redoc_url=None,openapi_url=None)
 
@@ -266,8 +277,10 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
 
     @app.get("/.well-known/oauth-protected-resource")
     def oauth_metadata():
-        return {"resource":settings.audience, "authorization_servers":[settings.issuer],
-                "scopes_supported":["openid","profile","ur:read","ur:control","ur:shell","ur:screen","ur:input","ur:devices"]}
+        return {"resource":settings.public_origin+"/mcp" if provider_mode=="supabase" else settings.audience,
+                "authorization_servers":[settings.issuer],
+                "scopes_supported":["openid","profile"] if provider_mode=="supabase" else
+                    ["openid","profile","ur:read","ur:control","ur:shell","ur:screen","ur:input","ur:devices"]}
 
     @app.get("/.well-known/openai-apps-challenge")
     def challenge():
@@ -370,7 +383,7 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             elif method=="ping":
                 payload={}
             elif method=="tools/list":
-                payload={"tools":TOOL_DEFS}
+                payload={"tools":public_tools}
             elif method=="tools/call":
                 params=data.get("params",{})
                 if not isinstance(params,dict):
@@ -381,13 +394,17 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             else:
                 return JSONResponse({"jsonrpc":"2.0","id":ident,"error":{"code":-32601,"message":"Method not found"}})
         except Unauthorized:
-            requested=params.get("name") if isinstance(params,dict) else None
-            scopes=TOOL_SCOPES.get(requested, ["ur:read"])
-            challenge=(f'Bearer resource_metadata="{settings.public_origin}/.well-known/oauth-protected-resource", '
-                       'error="insufficient_scope", error_description="Additional Universal Remote permission required", '
-                       f'scope="{" ".join(scopes)}"')
-            payload={"content":[{"type":"text","text":"Additional authorization required"}],
-                     "isError":True,"_meta":{"mcp/www_authenticate":[challenge]}}
+            if provider_mode=="supabase":
+                payload={"content":[{"type":"text","text":"Operation denied by publisher-defined client grants"}],
+                         "isError":True}
+            else:
+                requested=params.get("name") if isinstance(params,dict) else None
+                scopes=TOOL_SCOPES.get(requested, ["ur:read"])
+                challenge=(f'Bearer resource_metadata="{settings.public_origin}/.well-known/oauth-protected-resource", '
+                           'error="insufficient_scope", error_description="Additional Universal Remote permission required", '
+                           f'scope="{" ".join(scopes)}"')
+                payload={"content":[{"type":"text","text":"Additional authorization required"}],
+                         "isError":True,"_meta":{"mcp/www_authenticate":[challenge]}}
         except (Denied,KeyError,TypeError,ValueError) as exc:
             payload={"content":[{"type":"text","text":"Operation denied or unavailable"}],"isError":True}
             if method!="tools/call":
@@ -442,5 +459,17 @@ def production_app() -> FastAPI:
     database=os.environ["UR_GATEWAY_DB"]
     if not database.startswith("/state/"):
         raise RuntimeError("Production SQLite must reside on persistent /state mount")
-    return create_app(settings,Store(Path(database),key),OIDC(settings),
-                      challenge_token=os.environ.get("UR_DOMAIN_CHALLENGE"))
+    provider=os.environ.get("UR_AUTH_PROVIDER","oidc")
+    if provider=="supabase":
+        from .auth import SupabaseOIDC
+        # The allowlist is publisher-controlled, never a JWT claim or user-input
+        # permission. An empty/malformed list MUST prevent the service starting.
+        grants=json.loads(os.environ["UR_SUPABASE_CLIENT_GRANTS_JSON"])
+        oidc=SupabaseOIDC(settings,client_capabilities=grants)
+    elif provider=="oidc":
+        oidc=OIDC(settings)
+    else:
+        raise ValueError("Unknown authentication provider")
+    return create_app(settings,Store(Path(database),key),oidc,
+                      challenge_token=os.environ.get("UR_DOMAIN_CHALLENGE"),
+                      provider_mode=provider)

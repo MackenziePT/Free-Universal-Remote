@@ -23,6 +23,7 @@ targets=[
     ("UniversalRemote-Preview","public_gui.py","windowed",
      ["--hidden-import","cloud.public_link_ui",
       "--hidden-import","cloud.public_link_cli",
+      "--hidden-import","cloud.oauth_pkce",
       "--hidden-import","cloud.windows_identity",
       "--hidden-import","cloud.native_dispatch",
       "--hidden-import","server",
