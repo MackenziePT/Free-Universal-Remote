@@ -68,6 +68,9 @@ TOOL_DEFS = [
     {"name":"request_windows_screenshot", "description":"Queue capture of my Windows display. Requires a separate fresh local screen permission; can reveal private content.",
      "inputSchema":{"type":"object","properties":{"device_id":{"type":"string"},"monitor":{"type":"integer","minimum":1,"maximum":8}},"required":["device_id"],"additionalProperties":False},
      "annotations":{"title":"Request locally approved screenshot","readOnlyHint":False,"openWorldHint":False,"destructiveHint":False}},
+    {"name":"request_windows_input", "description":"Queue a mouse click, Unicode text input or restricted key press on my enrolled PC. Requires an independent fresh local Windows input grant. May change applications or send text.",
+     "inputSchema":{"type":"object","properties":{"device_id":{"type":"string"},"action":{"type":"string","enum":["click","type","press"]},"x":{"type":"integer"},"y":{"type":"integer"},"text":{"type":"string","maxLength":500},"confirmation":{"type":"string","enum":["I understand this requires local Windows approval"]}},"required":["device_id","action","confirmation"],"additionalProperties":False},
+     "annotations":{"title":"Request locally approved mouse or keyboard action","readOnlyHint":False,"openWorldHint":True,"destructiveHint":True}},
     {"name":"get_windows_operation", "description":"Retrieve the status or output of my previously queued Windows operation by ID. Other users' operation IDs do not work.",
      "inputSchema":{"type":"object","properties":{"operation_id":{"type":"string"}},"required":["operation_id"],"additionalProperties":False},
      "annotations":{"title":"Get Windows operation","readOnlyHint":True,"openWorldHint":False,"destructiveHint":False}},
@@ -86,6 +89,7 @@ TOOL_SCOPES = {
     "request_windows_file_read": ["ur:read", "ur:control"],
     "request_windows_powershell": ["ur:read", "ur:shell"],
     "request_windows_screenshot": ["ur:read", "ur:screen"],
+    "request_windows_input": ["ur:read", "ur:input"],
     "get_profile": ["ur:read"],
 }
 TOOL_DEFS.append({
@@ -225,6 +229,26 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
             if not isinstance(cmd,str) or not (1<=len(cmd)<=12000):
                 raise Denied("Invalid shell command")
             op="run_powershell"; args={"command":cmd,"operation_id":str(uuid.uuid4())}
+        elif name=="request_windows_input":
+            user.requires("ur:input")
+            if arguments["confirmation"]!="I understand this requires local Windows approval":
+                raise Denied("Local Windows input approval must be acknowledged")
+            action=arguments["action"]
+            if not isinstance(action,str) or action not in ("click","type","press"):
+                raise Denied("Unknown or unsafe desktop action")
+            x=arguments.get("x",0);y=arguments.get("y",0)
+            text=arguments.get("text","")
+            if type(x) is not int or type(y) is not int or not(-100000<=x<=100000 and -100000<=y<=100000):
+                raise Denied("Invalid screen coordinates")
+            if action=="click" and not set(("x","y")).issubset(arguments):
+                raise Denied("Click coordinates required")
+            if action=="type" and (not isinstance(text,str) or not 1<=len(text)<=500):
+                raise Denied("Invalid input text")
+            if action=="press" and text not in {"enter","esc","tab","up","down","left","right","backspace"}:
+                raise Denied("Input key not in approved set")
+            if action=="click" and text:
+                raise Denied("Click must not carry text")
+            op="desktop_action";args={"action":action,"x":x,"y":y,"text":text,"operation_id":str(uuid.uuid4())}
         elif name=="request_windows_screenshot":
             user.requires("ur:screen")
             mon=arguments.get("monitor",1)
@@ -243,7 +267,7 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
     @app.get("/.well-known/oauth-protected-resource")
     def oauth_metadata():
         return {"resource":settings.audience, "authorization_servers":[settings.issuer],
-                "scopes_supported":["openid","profile","ur:read","ur:control","ur:shell","ur:screen","ur:devices"]}
+                "scopes_supported":["openid","profile","ur:read","ur:control","ur:shell","ur:screen","ur:input","ur:devices"]}
 
     @app.get("/.well-known/openai-apps-challenge")
     def challenge():

@@ -56,6 +56,7 @@ def test_device_authorize_poll_and_open_browser():
     assert opened==[challenge["verification_uri_complete"]]
     assert any("ABC-123" in n for n in messages)
     assert http.post.call_args_list[-1].kwargs["data"]["grant_type"] == "urn:ietf:params:oauth:grant-type:device_code"
+    assert "ur:shell" not in http.post.call_args_list[0].kwargs["data"]["scope"]
 
 
 def test_enroll_requires_token_and_persists_only_own_key():
@@ -120,3 +121,11 @@ def test_windows_dpapi_identity_roundtrip_in_temporary_directory(tmp_path):
     assert origin=="https://remote.example.org"
     assert loaded_id==ident
     assert loaded_signer.public_key()==signer.public_key()
+
+
+def test_malformed_device_identity_never_crashes_status(tmp_path):
+    import json
+    identity=tmp_path/"device_identity.json"
+    identity.write_text(json.dumps({"version":1,"origin":"https://remote.example.org",
+        "dpapi_key":"placeholder","device_id":"not-a-uuid"}),encoding="utf-8")
+    assert current_link_status(identity)["paired"] is False

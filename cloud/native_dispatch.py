@@ -22,6 +22,7 @@ REQUIRED_GRANTS = {
     "read_text_file": None,
     "run_powershell": "shell",
     "desktop_screenshot": "screen",
+    "desktop_action": "input",
 }
 
 
@@ -75,4 +76,10 @@ class NativeDispatcher:
             if not isinstance(raw,bytes) or len(raw)>1_350_000:
                 raise NativeDenied("Screenshot missing or exceeds safe limit")
             return {"mime":"image/jpeg","base64":base64.b64encode(raw).decode("ascii")}
+        if method=="desktop_action":
+            if not isinstance(args,dict) or set(args)!={"action","x","y","text","operation_id"}:
+                raise NativeDenied("Invalid desktop action request")
+            result=self.native.desktop_action(args["action"],args["operation_id"],
+                                              args["x"],args["y"],args["text"])
+            return json.loads(result)
         raise NativeDenied("Unknown or prohibited native operation")

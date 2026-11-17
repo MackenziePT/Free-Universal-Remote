@@ -26,7 +26,7 @@ class AgentError(RuntimeError):
 
 
 ALLOWED_REMOTE_OPS = frozenset({
-    "windows_diagnostic", "read_text_file", "run_powershell", "desktop_screenshot"
+    "windows_diagnostic", "read_text_file", "run_powershell", "desktop_screenshot", "desktop_action"
 })
 
 

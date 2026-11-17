@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import json, os, re, time, webbrowser
 import httpx
 from .auth import public_https
-from .device_client import DeviceAgent, Signer, _id
+from .device_client import DeviceAgent, Signer, AgentError, _id
 
 class LinkError(RuntimeError): pass
 
@@ -54,7 +54,7 @@ def device_authorize(cfg, *, http=None, open_browser=None, note=None, sleep=None
         url=_trusted(metadata.get("device_authorization_endpoint"),cfg.issuer)
         token_url=_trusted(metadata.get("token_endpoint"),cfg.issuer)
         r=http.post(url,data={"client_id":cfg.client_id,"resource":cfg.gateway+"/mcp",
-            "scope":"openid profile ur:read ur:control ur:devices ur:shell ur:screen"})
+            "scope":"openid profile ur:read ur:devices"})
         r.raise_for_status()
         info=r.json()
         if not isinstance(info,dict):raise LinkError("Invalid OAuth device response")
@@ -119,7 +119,7 @@ def current_link_status(path):
         paired=(isinstance(o,dict) and o.get("version")==1
                 and isinstance(o.get("dpapi_key"),str)
                 and public_https(o.get("origin")) and bool(_id(o.get("device_id"))))
-    except (OSError,TypeError,ValueError,KeyError):
+    except (OSError,TypeError,ValueError,KeyError,AgentError):
         paired=False
     return {"paired":paired,"connected":False}
 
