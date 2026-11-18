@@ -121,7 +121,11 @@ def current_link_status(path):
                 and public_https(o.get("origin")) and bool(_id(o.get("device_id"))))
     except (OSError,TypeError,ValueError,KeyError,AgentError):
         paired=False
-    return {"paired":paired,"connected":False}
+    if not paired:
+        return {"paired":False,"connected":False}
+    from .agent_runtime import recent_contact
+    online, last = recent_contact(path, o["device_id"])
+    return {"paired":True,"connected":online,"last_contact_utc":last}
 
 def bridge_once(origin,device_id,signer, *,native_permission=None,native_dispatch=None,http=None):
     if not callable(native_permission) or not callable(native_dispatch):
@@ -142,13 +146,28 @@ def connect_windows(cfg,label, *,note=None,open_browser=None):
 def run_agent(*,once=False,interval=3,stopped=None):
     from .windows_identity import default_identity_path,load_identity
     from .native_dispatch import NativeDispatcher
-    origin,device_id,signer=load_identity(default_identity_path())
+    identity_path = default_identity_path()
+    origin,device_id,signer=load_identity(identity_path)
+    from .agent_runtime import update_heartbeat, single_agent_lock
     native=NativeDispatcher()
-    with httpx.Client(timeout=20,verify=True,follow_redirects=False) as client:
-        while stopped is None or not stopped.is_set():
-            try:bridge_once(origin,device_id,signer,native_permission=native.has_local_permission,
-                            native_dispatch=native.dispatch_local,http=client)
-            except httpx.HTTPError:pass
-            if once:return
-            if stopped is None:time.sleep(interval)
-            else:stopped.wait(interval)
+    failures=0
+    with single_agent_lock(identity_path.with_name("agent.lock")):
+        update_heartbeat(identity_path,device_id,connected=False)
+        try:
+            with httpx.Client(timeout=20,verify=True,follow_redirects=False) as client:
+                while stopped is None or not stopped.is_set():
+                    try:
+                        bridge_once(origin,device_id,signer,native_permission=native.has_local_permission,
+                                    native_dispatch=native.dispatch_local,http=client)
+                    except (httpx.HTTPError, AgentError, OSError):
+                        failures=min(failures+1,5)
+                        update_heartbeat(identity_path,device_id,connected=False)
+                    else:
+                        failures=0
+                        update_heartbeat(identity_path,device_id,connected=True)
+                    if once:return
+                    delay=max(float(interval), min(30.0, float(interval)*(2**(failures-1)))) if failures else float(interval)
+                    if stopped is None:time.sleep(delay)
+                    else:stopped.wait(delay)
+        finally:
+            update_heartbeat(identity_path,device_id,connected=False)
