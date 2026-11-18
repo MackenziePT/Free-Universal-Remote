@@ -28,3 +28,18 @@ def test_review_dossier_has_exact_positive_and_negative_cases():
     assert dossier["release_notes"]
     assert dossier["reviewer_demo_credentials_ready"] is False
     assert dossier["official_review_approved"] is False
+
+
+def test_listing_svg_assets_are_bundled_and_safe():
+    import xml.etree.ElementTree as ET
+    m=json.loads((ROOT/"plugin.json").read_text(encoding="utf-8"))
+    ui=m["extensions"]["com.openai"]["interface"]
+    for field in ("logo","composerIcon"):
+        path=ROOT/ui[field]
+        assert path.is_file()
+        raw=path.read_text(encoding="utf-8")
+        assert "<script" not in raw.lower()
+        assert "href=" not in raw.lower()
+        svg=ET.fromstring(raw)
+        assert svg.tag=="{http://www.w3.org/2000/svg}svg"
+        assert svg.attrib["width"]==svg.attrib["height"]=="256"

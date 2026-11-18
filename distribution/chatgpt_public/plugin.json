@@ -38,7 +38,9 @@
         "websiteURL": "https://universal-remote-free-production.up.railway.app/about",
         "privacyPolicyURL": "https://universal-remote-free-production.up.railway.app/privacy",
         "termsOfServiceURL": "https://universal-remote-free-production.up.railway.app/terms",
-        "supportURL": "https://universal-remote-free-production.up.railway.app/support"
+        "supportURL": "https://universal-remote-free-production.up.railway.app/support",
+        "logo": "./assets/logo.svg",
+        "composerIcon": "./assets/icon.svg"
       },
       "onboardingSkill": "./skills/setup-universal-remote/SKILL.md"
     }
