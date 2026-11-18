@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "product": "Universal Remote Free Unlimited",
+  "listing_display_name": "Universal Remote FreeUnlimited",
+  "initial_submission": true,
+  "status": "DRAFT_NOT_SUBMITTED",
+  "reviewer_demo_credentials_ready": false,
+  "official_review_approved": false,
+  "review_notes": "Public gateway is production HTTPS with Supabase OAuth. Windows commands remain disabled by publisher release gate. Reviewer access and a separate disposable Windows test device are still required. Do not use owner's private desktop or personal credentials.",
+  "positive_cases": [
+    {
+      "prompt": "Mostra-me o meu identificador de conta no Universal Remote.",
+      "expected_tool": "get_profile",
+      "expected_result": "Opaque stable account id, no email or secrets",
+      "fixture": "Dedicated reviewer OAuth account with read-only approved client ID",
+      "status": "IMPLEMENTED_NOT_REVIEWER_TESTED"
+    },
+    {
+      "prompt": "Mostra os meus computadores Windows emparelhados.",
+      "expected_tool": "list_windows_devices",
+      "expected_result": "List containing only devices enrolled to this OAuth account",
+      "fixture": "Reviewer account with disposable Windows test device",
+      "status": "IMPLEMENTED_NOT_REVIEWER_TESTED"
+    },
+    {
+      "prompt": "Verifica o estado do meu computador de testes.",
+      "expected_tool": "get_windows_device",
+      "expected_result": "Device label and online status scoped to reviewer account",
+      "fixture": "Disposable enrolled Windows device id belonging to reviewer OAuth account",
+      "status": "IMPLEMENTED_NOT_REVIEWER_TESTED"
+    },
+    {
+      "prompt": "Faz um diagnóstico não destrutivo do CPU do meu computador de testes.",
+      "expected_tool": "request_windows_diagnostic",
+      "expected_result": "Queued diagnostic operation id; subsequent operation result includes bounded diagnostic",
+      "fixture": "Isolated reviewer device with read-only local approval and publisher read-only release gate enabled",
+      "status": "BLOCKED_PUBLIC_COMMANDS_DISABLED"
+    },
+    {
+      "prompt": "Lê um ficheiro de texto de teste dentro da pasta autorizada no computador de testes.",
+      "expected_tool": "request_windows_file_read",
+      "expected_result": "Queued operation id, then text within configured allowlisted folder only",
+      "fixture": "Disposable file in isolated reviewer device allowlisted root; explicit owner approval",
+      "status": "BLOCKED_PUBLIC_COMMANDS_DISABLED"
+    }
+  ],
+  "negative_cases": [
+    {
+      "scenario": "User without bearer token requests list_windows_devices or device enrollment",
+      "expected_safe_behavior": "OAuth challenge or HTTP 401; no device identifiers returned",
+      "why_refused": "Authentication required for account-specific metadata"
+    },
+    {
+      "scenario": "Account A requests a device id enrolled by account B",
+      "expected_safe_behavior": "No device information and no queued operation for foreign account",
+      "why_refused": "Strict tenant isolation and ownership"
+    },
+    {
+      "scenario": "A valid user asks to run PowerShell without an enabled publisher gate or local Windows grant",
+      "expected_safe_behavior": "Request is denied; nothing is queued or executed",
+      "why_refused": "Privileged actions require both publisher-controlled release gate and fresh local authorization"
+    }
+  ],
+  "release_notes": "Initial public preview candidate: HTTPS MCP gateway with Supabase OAuth PKCE, Ed25519 per-device pairing, encrypted operation queue, account isolation, nonces, revocation, Windows DPAPI identities, signed outbound polling, real heartbeat and single process restart; not yet certified or reviewed.",
+  "blockers": [
+    "Reviewer demo credentials and approved OAuth client registration required",
+    "Publisher verification and domain challenge from OpenAI portal required",
+    "Independent second-Windows acceptance and security review required",
+    "Certified signed Windows installer absent",
+    "Remote command release gate intentionally disabled",
+    "Official submission, review and final publish have not occurred",
+    "Public demo recording URL required"
+  ]
+}

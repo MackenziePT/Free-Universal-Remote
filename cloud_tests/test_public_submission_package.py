@@ -11,7 +11,7 @@ def test_portable_manifest_is_named_and_versioned():
     assert manifest["name"]=="universal-remote-free-unlimited"
     assert manifest["version"].startswith("1.1.0-rc.")
     assert manifest["extensions"]["com.openai"]["onboardingSkill"]=="./skills/setup-universal-remote/SKILL.md"
-    assert manifest["extensions"]["com.openai"]["interface"]["displayName"]=="Universal Remote Free Unlimited"
+    assert manifest["extensions"]["com.openai"]["interface"]["displayName"]=="Universal Remote FreeUnlimited"
     assert (DIR/"skills"/"setup-universal-remote"/"SKILL.md").is_file()
 
 def test_remote_mcp_is_public_https_and_oauth_only():

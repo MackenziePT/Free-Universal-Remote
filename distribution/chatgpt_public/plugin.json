@@ -19,7 +19,7 @@
     "com.openai": {
       "interface": {
         "longDescription": "Liga um PC Windows instalado e emparelhado ao ChatGPT através de um gateway MCP seguro. Permite diagnósticos, leitura de ficheiros autorizados, PowerShell e ações de ecrã, apenas após autenticação e permissões locais explícitas. Requer agente Windows instalado, emparelhamento individual e ligação ativa. Sem promessas de quotas ilimitadas de terceiros.",
-        "shortDescription": "Controla o teu Windows com autorização local.",
+        "shortDescription": "Windows remoto autorizado",
         "capabilities": [
           "Authenticated Windows device pairing",
           "Windows diagnostics",
@@ -34,7 +34,7 @@
           "Faz um diagnóstico de leitura do meu PC emparelhado."
         ],
         "category": "Developer Tools",
-        "displayName": "Universal Remote Free Unlimited",
+        "displayName": "Universal Remote FreeUnlimited",
         "websiteURL": "https://universal-remote-free-production.up.railway.app/about",
         "privacyPolicyURL": "https://universal-remote-free-production.up.railway.app/privacy",
         "termsOfServiceURL": "https://universal-remote-free-production.up.railway.app/terms",
