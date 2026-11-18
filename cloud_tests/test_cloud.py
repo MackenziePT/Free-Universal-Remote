@@ -29,7 +29,9 @@ class MockKeys:
 
 
 @pytest.fixture
-def world(tmp_path):
+def world(tmp_path, monkeypatch):
+    # Explicitly exercise the enabled release branch in integration tests.
+    monkeypatch.setenv('UR_AGENT_COMMANDS_ENABLED','true')
     rsa=generate_private_key(public_exponent=65537,key_size=2048)
     settings=Settings("https://accounts.example.org/", "https://remote.example.org/mcp",
                       "https://accounts.example.org/.well-known/jwks.json", "https://remote.example.org")

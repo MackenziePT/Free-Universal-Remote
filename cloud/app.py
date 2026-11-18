@@ -219,6 +219,12 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
                 raise Denied("Explicit device revocation confirmation required")
             store.revoke(owner,uuid4(arguments["device_id"]))
             return {"revoked":True}
+        # Separate publisher release gate, independent of signed OAuth client
+        # capabilities and the native Windows owner's fresh local grants.
+        # Pairing and device discovery work while privileged remote actions are
+        # unavailable until independent end-to-end security verification.
+        if name.startswith("request_windows_") and os.environ.get("UR_AGENT_COMMANDS_ENABLED")!="true":
+            raise Denied("Remote commands disabled pending verified release")
         device_id=uuid4(arguments["device_id"])
         if name=="request_windows_diagnostic":
             user.requires("ur:control")
