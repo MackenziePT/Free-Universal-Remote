@@ -24,8 +24,9 @@ def test_remote_mcp_is_public_https_and_oauth_only():
     assert server["url"]=="https://universal-remote-free-production.up.railway.app/mcp"
     auth=server["extensions"]["com.openai"]["auth"]
     assert auth["type"]=="oauth"
-    assert auth["client"]["mode"]=="cimd"
-    assert auth["baseScopes"]==["ur:read"]
+    # Current Supabase metadata advertises DCR and OIDC scopes, not CIMD/ur:read.
+    assert auth["client"]["mode"]=="dcr"
+    assert auth["baseScopes"]==["openid","profile"]
     assert "headers" not in server
     assert not any(s in (DIR/"plugin.json").read_text(encoding="utf-8") for s in ("private", "dev-6af", "plugin_asdk_app", ".app.json"))
 

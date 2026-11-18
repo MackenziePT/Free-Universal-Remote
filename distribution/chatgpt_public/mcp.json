@@ -6,11 +6,12 @@
         "com.openai": {
           "auth": {
             "client": {
-              "mode": "cimd"
+              "mode": "dcr"
             },
             "type": "oauth",
             "baseScopes": [
-              "ur:read"
+              "openid",
+              "profile"
             ]
           }
         }

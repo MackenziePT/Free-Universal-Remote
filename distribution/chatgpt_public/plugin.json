@@ -34,7 +34,11 @@
           "Faz um diagnóstico de leitura do meu PC emparelhado."
         ],
         "category": "Developer Tools",
-        "displayName": "Universal Remote Free Unlimited"
+        "displayName": "Universal Remote Free Unlimited",
+        "websiteURL": "https://universal-remote-free-production.up.railway.app/about",
+        "privacyPolicyURL": "https://universal-remote-free-production.up.railway.app/privacy",
+        "termsOfServiceURL": "https://universal-remote-free-production.up.railway.app/terms",
+        "supportURL": "https://universal-remote-free-production.up.railway.app/support"
       },
       "onboardingSkill": "./skills/setup-universal-remote/SKILL.md"
     }

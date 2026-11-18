@@ -283,6 +283,26 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
         from .consent_ui import email_landing_response
         return email_landing_response()
 
+    @app.get("/about")
+    def public_about():
+        from .public_site import public_page
+        return public_page("about")
+
+    @app.get("/privacy")
+    def public_privacy():
+        from .public_site import public_page
+        return public_page("privacy")
+
+    @app.get("/terms")
+    def public_terms():
+        from .public_site import public_page
+        return public_page("terms")
+
+    @app.get("/support")
+    def public_support():
+        from .public_site import public_page
+        return public_page("support")
+
     @app.get("/oauth/consent")
     def consent_page():
         from .consent_ui import consent_html_response
@@ -445,6 +465,26 @@ def preflight_app() -> FastAPI:
     def email_landing():
         from .consent_ui import email_landing_response
         return email_landing_response()
+
+    @preview.get("/about")
+    def public_about():
+        from .public_site import public_page
+        return public_page("about")
+
+    @preview.get("/privacy")
+    def public_privacy():
+        from .public_site import public_page
+        return public_page("privacy")
+
+    @preview.get("/terms")
+    def public_terms():
+        from .public_site import public_page
+        return public_page("terms")
+
+    @preview.get("/support")
+    def public_support():
+        from .public_site import public_page
+        return public_page("support")
 
     @preview.get("/oauth/consent")
     def consent_page():
