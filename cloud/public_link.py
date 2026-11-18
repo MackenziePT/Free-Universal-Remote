@@ -143,7 +143,21 @@ def connect_windows(cfg,label, *,note=None,open_browser=None):
     return enroll_windows(cfg,bearer,label,save_identity=lambda signer,origin,ident:
                           save_identity(path,signer,origin,ident))
 
+def ensure_native_policy() -> Path:
+    """Resolve only the existing owner's per-user policy; never create grants."""
+    from public_paths import config_path
+    target=config_path()
+    if not target.is_file():
+        raise LinkError("Owner's existing local Windows policy is missing")
+    previous=os.environ.get("HARMONY_MCP_CONFIG")
+    if previous and Path(previous).resolve()!=target.resolve():
+        raise LinkError("Local policy override does not match the owner's policy")
+    os.environ["HARMONY_MCP_CONFIG"]=str(target)
+    return target
+
+
 def run_agent(*,once=False,interval=3,stopped=None):
+    ensure_native_policy()
     from .windows_identity import default_identity_path,load_identity
     from .native_dispatch import NativeDispatcher
     identity_path = default_identity_path()
