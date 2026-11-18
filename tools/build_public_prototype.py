@@ -24,6 +24,7 @@ targets=[
      ["--hidden-import","cloud.public_link_ui",
       "--hidden-import","cloud.public_link_cli",
       "--hidden-import","cloud.oauth_pkce",
+      "--add-data",str(ROOT/"cloud"/"public_link_settings.json")+os.pathsep+"cloud",
       "--hidden-import","cloud.windows_identity",
       "--hidden-import","cloud.native_dispatch",
       "--hidden-import","server",
