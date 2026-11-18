@@ -277,6 +277,12 @@ def create_app(settings: Settings, store: Store, oidc: OIDC, *, clock=time.time,
         return {"operation_id":store.submit(owner,device_id,op,args),"status":"queued",
                 "notice":"Execution still requires independent local Windows authorization."}
 
+    @app.get("/")
+    @app.get("/auth/confirmed")
+    def email_landing():
+        from .consent_ui import email_landing_response
+        return email_landing_response()
+
     @app.get("/oauth/consent")
     def consent_page():
         from .consent_ui import consent_html_response
@@ -433,6 +439,12 @@ def preflight_app() -> FastAPI:
     """
     preview = FastAPI(title="Universal Remote Deployment Preflight",
                       docs_url=None, redoc_url=None, openapi_url=None)
+
+    @preview.get("/")
+    @preview.get("/auth/confirmed")
+    def email_landing():
+        from .consent_ui import email_landing_response
+        return email_landing_response()
 
     @preview.get("/oauth/consent")
     def consent_page():

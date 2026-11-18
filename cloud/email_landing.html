@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Universal Remote â€” ConfirmaÃ§Ã£o de email</title>
+  <style nonce="__NONCE__">
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#101719;color:#eaf4f0}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1.25rem;box-sizing:border-box}
+    main{width:min(100%,570px);background:#1a2527;border:1px solid #3a6256;border-radius:16px;padding:2rem}
+    h1{font-size:1.55rem;margin:0 0 1rem}
+    p{line-height:1.6}
+    #status{color:#f0d38d}
+    strong{color:#a5e9c7}
+    small{color:#b6cfc5}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Universal Remote Free Unlimited</h1>
+    <h2>ConfirmaÃ§Ã£o de email</h2>
+    <p id="status" role="status" aria-live="polite">A verificar o resultado da confirmaÃ§Ã£oâ€¦</p>
+    <p><strong>Se jÃ¡ confirmaste o email, nÃ£o Ã© preciso criar outra conta.</strong></p>
+    <p>Regressa ao separador <strong>Universal Remote â€” AutorizaÃ§Ã£o</strong> e escolhe
+       <strong>Entrar</strong> para iniciar sessão com o email e a palavra-passe que acabaste de criar.</p>
+    <p>Se o pedido de autorizaÃ§Ã£o tiver expirado, inicia uma nova ligaÃ§Ã£o
+       na aplicaÃ§Ã£o Universal Remote do Windows. NÃ£o reutilizes links antigos do email.</p>
+    <small>A autenticaÃ§Ã£o nÃ£o concede automaticamente acesso remoto ao teu computador.</small>
+  </main>
+  <script nonce="__NONCE__">
+    (() => {
+      // Never reflect server error text, query parameters, or token fragments.
+      const code = new URLSearchParams(location.search).get("error_code") || "";
+      const output = document.getElementById("status");
+      if (code === "otp_expired") {
+        output.textContent = "Este link de confirmaÃ§Ã£o jÃ¡ foi usado ou expirou. Se a conta foi confirmada, basta iniciares sessÃ£o normalmente.";
+      } else if (code) {
+        output.textContent = "O link de confirmaÃ§Ã£o nÃ£o pÃ´de ser utilizado. Experimenta entrar na conta que jÃ¡ criaste.";
+      } else {
+        output.textContent = "Podes voltar ao Universal Remote e iniciar sessÃ£o com a tua conta.";
+      }
+      // Remove any opaque one-time credentials in the URL from browser history.
+      try { history.replaceState(null, document.title, location.pathname); } catch (_) {}
+    })();
+  </script>
+</body>
+</html>
